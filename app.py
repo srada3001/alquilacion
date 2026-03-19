@@ -1,10 +1,10 @@
-DATA_PATH = "data"
-
 import os
 import pandas as pd
 import dash
 from dash import dcc, html, Input, Output
 import plotly.graph_objects as go
+
+from config import DATA_PATH, PROCESSED_DATA_FOLDER, get_processed_output_path
 
 # =========================
 # Grupos de variables
@@ -20,14 +20,21 @@ GRUPOS = {
 # Obtener fases y cargar data
 # =========================
 def obtener_fases():
-    fases = [
-        f for f in os.listdir(DATA_PATH)
-        if os.path.isdir(os.path.join(DATA_PATH, f))
-    ]
-    return fases
+    outputs_path = os.path.join(DATA_PATH, PROCESSED_DATA_FOLDER)
+    if not os.path.isdir(outputs_path):
+        return []
+
+    fases = []
+    for archivo in os.listdir(outputs_path):
+        archivo_path = os.path.join(outputs_path, archivo)
+        if not os.path.isfile(archivo_path) or not archivo.endswith(".parquet"):
+            continue
+        fases.append(os.path.splitext(archivo)[0])
+
+    return sorted(fases)
 
 def cargar_df(fase):
-    carga_path = os.path.join(DATA_PATH, fase, "df.parquet")
+    carga_path = get_processed_output_path(fase)
     df = pd.read_parquet(carga_path)
 
     # Asegurar índice datetime
