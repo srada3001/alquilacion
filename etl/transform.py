@@ -35,11 +35,31 @@ def renombrar_columnas(df, logger, prefix=r"\\pigrc\044-"):
 
 
 def ajustar_formatos(df, logger):
+    """
+    Convierte la columna ``fecha`` soportando dos formatos de origen:
+    fechas en texto y seriales de fecha de Excel.
+
+    Algunos archivos traen valores como ``4/15/2017 0:00`` y otros como
+    ``45669.00139``. Los valores numericos se interpretan como dias desde el
+    origen de Excel (1899-12-30) y los no numericos se parsean como fechas en
+    texto.
+    """
     logger.info("Ajustando formato de fechas")
-    df["fecha"] = pd.to_datetime(
-        df["fecha"],
+    fecha_numerica = pd.to_numeric(df["fecha"], errors="coerce")
+    es_fecha_excel = fecha_numerica.notna()
+
+    fecha_texto = pd.Series(pd.NaT, index=df.index, dtype="datetime64[ns]")
+    fecha_texto.loc[~es_fecha_excel] = pd.to_datetime(
+        df.loc[~es_fecha_excel, "fecha"],
         errors="coerce",
     )
+    fecha_excel = pd.to_datetime(
+        fecha_numerica,
+        unit="D",
+        origin="1899-12-30",
+        errors="coerce",
+    )
+    df["fecha"] = fecha_texto.fillna(fecha_excel)
     logger.info("Formato de fechas ajustado")
 
     logger.info("Ajustando formato de valores numericos")
