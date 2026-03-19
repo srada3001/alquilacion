@@ -1,7 +1,12 @@
 from dash import Input, Output, html
 import plotly.graph_objects as go
 
-from dashboard_app.data import GRUPOS, aplicar_downsampling, cargar_df
+from dashboard_app.data import (
+    GRUPOS,
+    aplicar_downsampling_a_fases,
+    cargar_dataframes,
+    combinar_dataframes_por_fase,
+)
 
 
 def normalizar_serie(serie):
@@ -39,6 +44,20 @@ def construir_tabla_correlacion(columna, correlaciones):
     )
 
 
+def obtener_columnas_por_grupo(dataframes, grupo):
+    columnas = []
+
+    for fase, df in dataframes.items():
+        columnas.extend(
+            [
+                f"{fase} | {columna}"
+                for columna in GRUPOS[grupo](df)
+            ]
+        )
+
+    return columnas
+
+
 def register_callbacks(app):
     @app.callback(
         Output("grupo-dropdown", "style"),
@@ -53,19 +72,20 @@ def register_callbacks(app):
     @app.callback(
         Output("columnas-checklist", "options"),
         Output("correlacion-columnas-checklist", "options"),
-        Input("fase-dropdown", "value"),
+        Input("fases-checklist", "value"),
     )
-    def actualizar_checklist(fase):
-        if fase is None:
+    def actualizar_checklist(fases):
+        if not fases:
             return [], []
 
-        df = cargar_df(fase)
-        opciones = [{"label": c, "value": c} for c in df.columns]
+        dataframes = cargar_dataframes(fases)
+        df_combinado = combinar_dataframes_por_fase(dataframes)
+        opciones = [{"label": c, "value": c} for c in df_combinado.columns]
         return opciones, opciones
 
     @app.callback(
         Output("grafico", "figure"),
-        Input("fase-dropdown", "value"),
+        Input("fases-checklist", "value"),
         Input("freq-dropdown", "value"),
         Input("modo-dropdown", "value"),
         Input("grupo-dropdown", "value"),
@@ -73,47 +93,49 @@ def register_callbacks(app):
         Input("columnas-checklist", "value"),
     )
     def actualizar_grafico(
-        fase,
+        fases,
         freq,
         modo,
         grupo,
         normalizar_opciones,
         columnas_manual,
     ):
-        if fase is None:
+        if not fases:
             return go.Figure()
 
-        df = cargar_df(fase)
-        df = aplicar_downsampling(df, freq)
+        dataframes = cargar_dataframes(fases)
+        dataframes = aplicar_downsampling_a_fases(dataframes, freq)
+        df_combinado = combinar_dataframes_por_fase(dataframes)
         normalizar = "normalizar" in (normalizar_opciones or [])
 
         if modo == "grupo":
-            columnas = GRUPOS[grupo](df)
+            columnas = obtener_columnas_por_grupo(dataframes, grupo)
         else:
             columnas = columnas_manual
 
-        columnas = [c for c in columnas if c in df.columns]
+        columnas = [c for c in columnas if c in df_combinado.columns]
         if not columnas:
             return go.Figure()
 
         fig = go.Figure()
 
         for col in columnas:
-            y = df[col]
+            y = df_combinado[col]
             if normalizar:
                 y = normalizar_serie(y)
 
             fig.add_trace(
                 go.Scatter(
-                    x=df.index,
+                    x=df_combinado.index,
                     y=y,
                     mode="lines",
                     name=col,
                 )
             )
 
+        titulo = grupo if modo == "grupo" else "Seleccion manual"
         fig.update_layout(
-            title=f"{fase} - {grupo if modo == 'grupo' else 'Seleccion manual'}",
+            title=f"{', '.join(fases)} - {titulo}",
             hovermode="x unified",
             xaxis=dict(
                 rangeslider=dict(visible=True),
@@ -125,17 +147,18 @@ def register_callbacks(app):
 
     @app.callback(
         Output("correlaciones-container", "children"),
-        Input("fase-dropdown", "value"),
+        Input("fases-checklist", "value"),
         Input("freq-dropdown", "value"),
         Input("correlacion-columnas-checklist", "value"),
     )
-    def actualizar_correlaciones(fase, freq, columnas_correlacion):
-        if fase is None or not columnas_correlacion:
+    def actualizar_correlaciones(fases, freq, columnas_correlacion):
+        if not fases or not columnas_correlacion:
             return []
 
-        df = cargar_df(fase)
-        df = aplicar_downsampling(df, freq)
-        correlacion_df = df.corr(numeric_only=True)
+        dataframes = cargar_dataframes(fases)
+        dataframes = aplicar_downsampling_a_fases(dataframes, freq)
+        df_combinado = combinar_dataframes_por_fase(dataframes)
+        correlacion_df = df_combinado.corr(numeric_only=True)
 
         tablas = []
         for columna in columnas_correlacion:

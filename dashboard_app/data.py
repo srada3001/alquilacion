@@ -39,3 +39,29 @@ def aplicar_downsampling(df, freq):
     if freq == "1m":
         return df
     return df.resample(freq).mean()
+
+
+def cargar_dataframes(fases):
+    dataframes = {}
+    for fase in fases or []:
+        dataframes[fase] = cargar_df(fase)
+    return dataframes
+
+
+def aplicar_downsampling_a_fases(dataframes, freq):
+    return {
+        fase: aplicar_downsampling(df, freq)
+        for fase, df in dataframes.items()
+    }
+
+
+def combinar_dataframes_por_fase(dataframes):
+    dataframes_renombrados = []
+
+    for fase, df in dataframes.items():
+        dataframes_renombrados.append(df.add_prefix(f"{fase} | "))
+
+    if not dataframes_renombrados:
+        return pd.DataFrame()
+
+    return pd.concat(dataframes_renombrados, axis=1)

@@ -7,11 +7,10 @@ def build_layout(fases):
     return html.Div(
         [
             html.H2("Visualizacion de Variables de Proceso"),
-            dcc.Dropdown(
-                id="fase-dropdown",
+            dcc.Checklist(
+                id="fases-checklist",
                 options=[{"label": f, "value": f} for f in fases],
-                value=fases[0] if fases else None,
-                placeholder="Selecciona una fase",
+                value=fases[:1],
             ),
             dcc.Dropdown(
                 id="freq-dropdown",
