@@ -4,10 +4,11 @@ Proyecto para procesar datos de fases mediante un ETL y visualizarlos en una app
 
 ## Componentes principales
 
-- `app.py`: app de visualizacion de datos procesados.
+- `dashboard_app.py`: entrypoint de la app de visualizacion de datos procesados.
 - `run_etl.py`: entrypoint para ejecutar el ETL completo.
 - `config.py`: configuracion compartida de rutas y nombres de archivos.
 - `etl/`: paquete con la logica de extraccion, transformacion, carga y utilidades.
+- `dashboard_app/`: paquete con la logica, layout y callbacks del dashboard.
 - `data/`: carpeta con datos originales, outputs, logs y resumenes.
 
 ## Estructura esperada de datos
@@ -46,7 +47,7 @@ python run_etl.py
 Ejecutar la app:
 
 ```bash
-python app.py
+python dashboard_app.py
 ```
 
 ## Convenciones
