@@ -4,6 +4,13 @@ import plotly.graph_objects as go
 from dashboard_app.data import GRUPOS, aplicar_downsampling, cargar_df
 
 
+def normalizar_serie(serie):
+    rango = serie.max() - serie.min()
+    if rango == 0:
+        return serie * 0
+    return (serie - serie.min()) / rango
+
+
 def register_callbacks(app):
     @app.callback(
         Output("grupo-dropdown", "style"),
@@ -32,14 +39,23 @@ def register_callbacks(app):
         Input("freq-dropdown", "value"),
         Input("modo-dropdown", "value"),
         Input("grupo-dropdown", "value"),
+        Input("normalizar-checklist", "value"),
         Input("columnas-checklist", "value"),
     )
-    def actualizar_grafico(fase, freq, modo, grupo, columnas_manual):
+    def actualizar_grafico(
+        fase,
+        freq,
+        modo,
+        grupo,
+        normalizar_opciones,
+        columnas_manual,
+    ):
         if fase is None:
             return go.Figure()
 
         df = cargar_df(fase)
         df = aplicar_downsampling(df, freq)
+        normalizar = "normalizar" in (normalizar_opciones or [])
 
         if modo == "grupo":
             columnas = GRUPOS[grupo](df)
@@ -54,7 +70,8 @@ def register_callbacks(app):
 
         for col in columnas:
             y = df[col]
-            y = (y - y.min()) / (y.max() - y.min())
+            if normalizar:
+                y = normalizar_serie(y)
 
             fig.add_trace(
                 go.Scatter(

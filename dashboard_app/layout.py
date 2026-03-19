@@ -37,6 +37,11 @@ def build_layout(fases):
                 value="Temperatura",
             ),
             dcc.Checklist(
+                id="normalizar-checklist",
+                options=[{"label": "Normalizar variables", "value": "normalizar"}],
+                value=[],
+            ),
+            dcc.Checklist(
                 id="columnas-checklist",
                 options=[],
                 value=[],
