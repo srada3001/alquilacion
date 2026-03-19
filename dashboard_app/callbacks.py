@@ -1,4 +1,4 @@
-from dash import Input, Output
+from dash import Input, Output, html
 import plotly.graph_objects as go
 
 from dashboard_app.data import GRUPOS, aplicar_downsampling, cargar_df
@@ -9,6 +9,34 @@ def normalizar_serie(serie):
     if rango == 0:
         return serie * 0
     return (serie - serie.min()) / rango
+
+
+def construir_tabla_correlacion(columna, correlaciones):
+    filas = [
+        html.Tr(
+            [
+                html.Th("Variable"),
+                html.Th("Correlacion"),
+            ]
+        )
+    ]
+
+    for variable, valor in correlaciones.items():
+        filas.append(
+            html.Tr(
+                [
+                    html.Td(variable),
+                    html.Td(f"{valor:.4f}"),
+                ]
+            )
+        )
+
+    return html.Div(
+        [
+            html.H4(columna),
+            html.Table(filas),
+        ]
+    )
 
 
 def register_callbacks(app):
@@ -24,14 +52,16 @@ def register_callbacks(app):
 
     @app.callback(
         Output("columnas-checklist", "options"),
+        Output("correlacion-columnas-checklist", "options"),
         Input("fase-dropdown", "value"),
     )
     def actualizar_checklist(fase):
         if fase is None:
-            return []
+            return [], []
 
         df = cargar_df(fase)
-        return [{"label": c, "value": c} for c in df.columns]
+        opciones = [{"label": c, "value": c} for c in df.columns]
+        return opciones, opciones
 
     @app.callback(
         Output("grafico", "figure"),
@@ -92,3 +122,28 @@ def register_callbacks(app):
         )
 
         return fig
+
+    @app.callback(
+        Output("correlaciones-container", "children"),
+        Input("fase-dropdown", "value"),
+        Input("freq-dropdown", "value"),
+        Input("correlacion-columnas-checklist", "value"),
+    )
+    def actualizar_correlaciones(fase, freq, columnas_correlacion):
+        if fase is None or not columnas_correlacion:
+            return []
+
+        df = cargar_df(fase)
+        df = aplicar_downsampling(df, freq)
+        correlacion_df = df.corr(numeric_only=True)
+
+        tablas = []
+        for columna in columnas_correlacion:
+            if columna not in correlacion_df.columns:
+                continue
+
+            correlaciones = correlacion_df[columna].drop(labels=[columna]).dropna()
+            correlaciones = correlaciones.sort_values(ascending=False)
+            tablas.append(construir_tabla_correlacion(columna, correlaciones))
+
+        return tablas

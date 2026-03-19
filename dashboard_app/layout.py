@@ -47,5 +47,12 @@ def build_layout(fases):
                 value=[],
             ),
             dcc.Graph(id="grafico"),
+            html.H3("Relaciones lineales entre variables"),
+            dcc.Checklist(
+                id="correlacion-columnas-checklist",
+                options=[],
+                value=[],
+            ),
+            html.Div(id="correlaciones-container"),
         ]
     )
