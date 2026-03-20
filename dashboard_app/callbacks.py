@@ -90,6 +90,26 @@ def aplicar_filtro(df, filtro_activo, columna, operador, valor):
     return df
 
 
+def construir_mascara_filtro(df, filtro_activo, columna, operador, valor):
+    if "filtrar" not in (filtro_activo or []):
+        return None
+    if columna is None or operador is None or valor is None:
+        return None
+    if columna not in df.columns:
+        return None
+
+    serie = df[columna]
+    if operador == ">":
+        return serie > valor
+    if operador == ">=":
+        return serie >= valor
+    if operador == "<":
+        return serie < valor
+    if operador == "<=":
+        return serie <= valor
+    return None
+
+
 def register_callbacks(app):
     @app.callback(
         Output("grupo-dropdown", "style"),
@@ -154,13 +174,17 @@ def register_callbacks(app):
 
         dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
-        df_combinado = aplicar_filtro(
+        mascara_filtro = construir_mascara_filtro(
             df_combinado,
             filtro_activo,
             filtro_columna,
             filtro_operador,
             filtro_valor,
         )
+        if mascara_filtro is not None:
+            df_grafico = df_combinado.where(mascara_filtro)
+        else:
+            df_grafico = df_combinado
         normalizar = "normalizar" in (normalizar_opciones or [])
 
         if modo == "grupo":
@@ -168,23 +192,24 @@ def register_callbacks(app):
         else:
             columnas = columnas_manual
 
-        columnas = [c for c in columnas if c in df_combinado.columns]
+        columnas = [c for c in columnas if c in df_grafico.columns]
         if not columnas:
             return go.Figure()
 
         fig = go.Figure()
 
         for col in columnas:
-            y = df_combinado[col]
+            y = df_grafico[col]
             if normalizar:
                 y = normalizar_serie(y)
 
             fig.add_trace(
                 go.Scatter(
-                    x=df_combinado.index,
+                    x=df_grafico.index,
                     y=y,
                     mode="lines",
                     name=col,
+                    connectgaps=False,
                 )
             )
 
