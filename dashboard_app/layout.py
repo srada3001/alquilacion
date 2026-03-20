@@ -15,6 +15,14 @@ CHECKLIST_LABEL_STYLE = {
 }
 
 
+FILTRO_CONTENEDOR_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+    "gap": "8px 16px",
+    "alignItems": "end",
+}
+
+
 def build_layout(fases):
     return html.Div(
         [
@@ -31,6 +39,39 @@ def build_layout(fases):
                 id="normalizar-checklist",
                 options=[{"label": "Normalizar variables", "value": "normalizar"}],
                 value=[],
+            ),
+            dcc.Checklist(
+                id="activar-filtro-checklist",
+                options=[{"label": "Aplicar filtro", "value": "filtrar"}],
+                value=[],
+            ),
+            html.Div(
+                [
+                    dcc.Dropdown(
+                        id="filtro-columna-dropdown",
+                        options=[],
+                        value=None,
+                        placeholder="Variable para filtrar",
+                    ),
+                    dcc.Dropdown(
+                        id="filtro-operador-dropdown",
+                        options=[
+                            {"label": "Mayor que", "value": ">"},
+                            {"label": "Mayor o igual que", "value": ">="},
+                            {"label": "Menor que", "value": "<"},
+                            {"label": "Menor o igual que", "value": "<="},
+                        ],
+                        value=">",
+                        placeholder="Operador",
+                    ),
+                    dcc.Input(
+                        id="filtro-valor-input",
+                        type="number",
+                        placeholder="Valor del filtro",
+                    ),
+                ],
+                id="filtro-container",
+                style={"display": "none"},
             ),
             dcc.Dropdown(
                 id="freq-dropdown",

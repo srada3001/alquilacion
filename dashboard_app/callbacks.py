@@ -13,6 +13,13 @@ CHECKLIST_GRID_STYLE = {
     "gap": "8px 16px",
 }
 
+FILTRO_CONTENEDOR_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+    "gap": "8px 16px",
+    "alignItems": "end",
+}
+
 
 def normalizar_serie(serie):
     rango = serie.max() - serie.min()
@@ -63,31 +70,59 @@ def obtener_columnas_por_grupo(dataframes, grupo):
     return columnas
 
 
+def aplicar_filtro(df, filtro_activo, columna, operador, valor):
+    if "filtrar" not in (filtro_activo or []):
+        return df
+    if columna is None or operador is None or valor is None:
+        return df
+    if columna not in df.columns:
+        return df
+
+    serie = df[columna]
+    if operador == ">":
+        return df.loc[serie > valor]
+    if operador == ">=":
+        return df.loc[serie >= valor]
+    if operador == "<":
+        return df.loc[serie < valor]
+    if operador == "<=":
+        return df.loc[serie <= valor]
+    return df
+
+
 def register_callbacks(app):
     @app.callback(
         Output("grupo-dropdown", "style"),
         Output("columnas-checklist", "style"),
+        Output("filtro-container", "style"),
         Input("modo-dropdown", "value"),
+        Input("activar-filtro-checklist", "value"),
     )
-    def mostrar_controles(modo):
+    def mostrar_controles(modo, filtro_activo):
+        filtro_style = FILTRO_CONTENEDOR_STYLE if "filtrar" in (filtro_activo or []) else {"display": "none"}
         if modo == "grupo":
-            return {"display": "block"}, {"display": "none"}
-        return {"display": "none"}, CHECKLIST_GRID_STYLE
+            return {"display": "block"}, {"display": "none"}, filtro_style
+        return {"display": "none"}, CHECKLIST_GRID_STYLE, filtro_style
 
     @app.callback(
         Output("columnas-checklist", "options"),
         Output("correlacion-columnas-checklist", "options"),
+        Output("filtro-columna-dropdown", "options"),
         Input("fases-checklist", "value"),
         Input("freq-dropdown", "value"),
     )
     def actualizar_checklist(fases, freq):
         if not fases:
-            return [], []
+            return [], [], []
 
         dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         opciones = [{"label": c, "value": c} for c in df_combinado.columns]
-        return opciones, opciones
+        opciones_numericas = [
+            {"label": c, "value": c}
+            for c in df_combinado.select_dtypes(include="number").columns
+        ]
+        return opciones, opciones, opciones_numericas
 
     @app.callback(
         Output("grafico", "figure"),
@@ -96,6 +131,10 @@ def register_callbacks(app):
         Input("modo-dropdown", "value"),
         Input("grupo-dropdown", "value"),
         Input("normalizar-checklist", "value"),
+        Input("activar-filtro-checklist", "value"),
+        Input("filtro-columna-dropdown", "value"),
+        Input("filtro-operador-dropdown", "value"),
+        Input("filtro-valor-input", "value"),
         Input("columnas-checklist", "value"),
     )
     def actualizar_grafico(
@@ -104,6 +143,10 @@ def register_callbacks(app):
         modo,
         grupo,
         normalizar_opciones,
+        filtro_activo,
+        filtro_columna,
+        filtro_operador,
+        filtro_valor,
         columnas_manual,
     ):
         if not fases:
@@ -111,6 +154,13 @@ def register_callbacks(app):
 
         dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
+        df_combinado = aplicar_filtro(
+            df_combinado,
+            filtro_activo,
+            filtro_columna,
+            filtro_operador,
+            filtro_valor,
+        )
         normalizar = "normalizar" in (normalizar_opciones or [])
 
         if modo == "grupo":
@@ -154,14 +204,33 @@ def register_callbacks(app):
         Output("correlaciones-container", "children"),
         Input("fases-checklist", "value"),
         Input("freq-dropdown", "value"),
+        Input("activar-filtro-checklist", "value"),
+        Input("filtro-columna-dropdown", "value"),
+        Input("filtro-operador-dropdown", "value"),
+        Input("filtro-valor-input", "value"),
         Input("correlacion-columnas-checklist", "value"),
     )
-    def actualizar_correlaciones(fases, freq, columnas_correlacion):
+    def actualizar_correlaciones(
+        fases,
+        freq,
+        filtro_activo,
+        filtro_columna,
+        filtro_operador,
+        filtro_valor,
+        columnas_correlacion,
+    ):
         if not fases or not columnas_correlacion:
             return []
 
         dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
+        df_combinado = aplicar_filtro(
+            df_combinado,
+            filtro_activo,
+            filtro_columna,
+            filtro_operador,
+            filtro_valor,
+        )
         correlacion_df = df_combinado.corr(numeric_only=True)
 
         tablas = []
