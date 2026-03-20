@@ -3,7 +3,6 @@ import plotly.graph_objects as go
 
 from dashboard_app.data import (
     GRUPOS,
-    aplicar_downsampling_a_fases,
     cargar_dataframes,
     combinar_dataframes_por_fase,
 )
@@ -73,12 +72,13 @@ def register_callbacks(app):
         Output("columnas-checklist", "options"),
         Output("correlacion-columnas-checklist", "options"),
         Input("fases-checklist", "value"),
+        Input("freq-dropdown", "value"),
     )
-    def actualizar_checklist(fases):
+    def actualizar_checklist(fases, freq):
         if not fases:
             return [], []
 
-        dataframes = cargar_dataframes(fases)
+        dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         opciones = [{"label": c, "value": c} for c in df_combinado.columns]
         return opciones, opciones
@@ -103,8 +103,7 @@ def register_callbacks(app):
         if not fases:
             return go.Figure()
 
-        dataframes = cargar_dataframes(fases)
-        dataframes = aplicar_downsampling_a_fases(dataframes, freq)
+        dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         normalizar = "normalizar" in (normalizar_opciones or [])
 
@@ -155,8 +154,7 @@ def register_callbacks(app):
         if not fases or not columnas_correlacion:
             return []
 
-        dataframes = cargar_dataframes(fases)
-        dataframes = aplicar_downsampling_a_fases(dataframes, freq)
+        dataframes = cargar_dataframes(fases, freq)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         correlacion_df = df_combinado.corr(numeric_only=True)
 

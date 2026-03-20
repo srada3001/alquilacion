@@ -24,6 +24,8 @@ data/
         archivo3.csv
   outputs/
     <fase>.parquet
+  outputs_1h/
+    <fase>.parquet
   logs/
     <fase>.log
   resumenes/
@@ -33,7 +35,7 @@ data/
 ## Flujo de trabajo
 
 1. Colocar los CSV de entrada en `data/data_original/<fase>/<parte>/`.
-2. Ejecutar el ETL para generar parquet, logs y resumenes.
+2. Ejecutar el ETL para generar parquets a 5 minutos y 1 hora, logs y resumenes.
 3. Abrir la app para visualizar las fases con output disponible.
 
 ## Ejecucion
@@ -53,7 +55,8 @@ python dashboard_app.py
 ## Convenciones
 
 - Cada fase tiene una carpeta dentro de `data/data_original`.
-- Cada output procesado se guarda como `data/outputs/<fase>.parquet`.
+- Cada output procesado base se guarda como `data/outputs/<fase>.parquet` con frecuencia de 5 minutos.
+- Cada output procesado agregado por hora se guarda como `data/outputs_1h/<fase>.parquet`.
 - Cada log se guarda como `data/logs/<fase>.log`.
 - Cada resumen se guarda como `data/resumenes/<fase>.csv`.
 - La app lista fases a partir de los `.parquet` disponibles en `data/outputs`.
@@ -67,5 +70,6 @@ python dashboard_app.py
 
 ## Notas
 
-- La app carga una fase a la vez.
-- Si los datasets son muy grandes, conviene considerar salidas agregadas para visualizacion, por ejemplo por hora o por bloques de tiempo.
+- La app permite comparar multiples fases al mismo tiempo.
+- Se usa intencionalmente una frecuencia base de 5 minutos para facilitar la coherencia entre fases (algunas fueron tomadas fon frecuencia 1m y otras con frecuencia 5m).
+- Se espera que en el futuro la data faltante se incorpore con frecuencia de 1 minuto y se hagan los ajustes necesarios.

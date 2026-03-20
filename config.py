@@ -4,6 +4,7 @@ import os
 DATA_PATH = "data"
 RAW_DATA_FOLDER = "data_original"
 PROCESSED_DATA_FOLDER = "outputs"
+PROCESSED_DATA_1H_FOLDER = "outputs_1h"
 LOGS_FOLDER = "logs"
 SUMMARIES_FOLDER = "resumenes"
 LOG_EXTENSION = ".log"
@@ -17,6 +18,10 @@ def get_raw_phase_path(fase):
 
 def get_processed_output_path(fase):
     return os.path.join(DATA_PATH, PROCESSED_DATA_FOLDER, f"{fase}{PARQUET_EXTENSION}")
+
+
+def get_processed_output_1h_path(fase):
+    return os.path.join(DATA_PATH, PROCESSED_DATA_1H_FOLDER, f"{fase}{PARQUET_EXTENSION}")
 
 
 def get_log_path(fase):

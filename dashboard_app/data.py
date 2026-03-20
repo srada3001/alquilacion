@@ -2,7 +2,12 @@ import os
 
 import pandas as pd
 
-from config import DATA_PATH, PROCESSED_DATA_FOLDER, get_processed_output_path
+from config import (
+    DATA_PATH,
+    PROCESSED_DATA_FOLDER,
+    get_processed_output_1h_path,
+    get_processed_output_path,
+)
 
 
 GRUPOS = {
@@ -28,31 +33,20 @@ def obtener_fases():
     return sorted(fases)
 
 
-def cargar_df(fase):
-    carga_path = get_processed_output_path(fase)
+def cargar_df(fase, freq):
+    if freq == "1h":
+        carga_path = get_processed_output_1h_path(fase)
+    else:
+        carga_path = get_processed_output_path(fase)
+
     df = pd.read_parquet(carga_path)
     df.index = pd.to_datetime(df.index)
     return df
-
-
-def aplicar_downsampling(df, freq):
-    if freq == "1m":
-        return df
-    return df.resample(freq).mean()
-
-
-def cargar_dataframes(fases):
+def cargar_dataframes(fases, freq):
     dataframes = {}
     for fase in fases or []:
-        dataframes[fase] = cargar_df(fase)
+        dataframes[fase] = cargar_df(fase, freq)
     return dataframes
-
-
-def aplicar_downsampling_a_fases(dataframes, freq):
-    return {
-        fase: aplicar_downsampling(df, freq)
-        for fase, df in dataframes.items()
-    }
 
 
 def combinar_dataframes_por_fase(dataframes):

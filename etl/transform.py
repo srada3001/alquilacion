@@ -84,6 +84,36 @@ def unir_partes(df_partes, logger):
     return df
 
 
+def eliminar_columnas_duplicadas(df, logger):
+    logger.info("Eliminando columnas duplicadas")
+    total_columnas = df.shape[1]
+    df = df.loc[:, ~df.columns.duplicated(keep="first")].copy()
+    columnas_eliminadas = total_columnas - df.shape[1]
+    logger.info("Columnas duplicadas eliminadas: %s", columnas_eliminadas)
+    return df
+
+
+def eliminar_filas_duplicadas(df, logger):
+    logger.info("Eliminando filas duplicadas")
+    total_filas = df.shape[0]
+    df = df.loc[~df.reset_index().duplicated(keep="first").values].copy()
+    filas_eliminadas = total_filas - df.shape[0]
+    logger.info("Filas duplicadas eliminadas: %s", filas_eliminadas)
+    return df
+
+
+def resamplear_por_frecuencia(df, freq, logger):
+    logger.info("Resampleando dataframe a %s", freq)
+    df_resampleado = df.resample(freq).mean()
+    logger.info(
+        "DataFrame resampleado a %s: %s filas y %s columnas",
+        freq,
+        df_resampleado.shape[0],
+        df_resampleado.shape[1],
+    )
+    return df_resampleado
+
+
 def eliminar_columnas_sin_informacion(df, logger):
     """
     Elimina columnas que tengan 2 o menos valores unicos.

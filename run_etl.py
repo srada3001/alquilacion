@@ -10,14 +10,18 @@ from etl.load import cargar_df, guardar_resumen
 from etl.transform import (
     ajustar_formatos,
     configurar_fecha_como_index,
+    eliminar_columnas_duplicadas,
+    eliminar_filas_duplicadas,
     eliminar_columnas_sin_informacion,
     eliminar_filas_sin_informacion,
     renombrar_columnas,
+    resamplear_por_frecuencia,
     resumen,
     unir_dataframes_por_tiempo,
     unir_partes,
 )
 from etl.utils import set_logger
+from etl.load import cargar_df_1h
 
 warnings.filterwarnings("ignore", category=pd.errors.DtypeWarning)
 
@@ -55,10 +59,17 @@ if __name__ == "__main__":
             logger.warning("No hay partes validas para la fase %s", fase)
             continue
         df = unir_partes(df_partes, logger)
+        df = eliminar_columnas_duplicadas(df, logger)
+        df = eliminar_filas_duplicadas(df, logger)
         df = eliminar_columnas_sin_informacion(df, logger)
         df = eliminar_filas_sin_informacion(df, logger)
-        resumen_df = resumen(df, logger)
+        df_5m = resamplear_por_frecuencia(df, "5min", logger)
+        df_5m = eliminar_filas_sin_informacion(df_5m, logger)
+        df_1h = resamplear_por_frecuencia(df, "1h", logger)
+        df_1h = eliminar_filas_sin_informacion(df_1h, logger)
+        resumen_df = resumen(df_5m, logger)
         guardar_resumen(resumen_df, fase, logger)
-        cargar_df(df=df, fase=fase, logger=logger)
+        cargar_df(df=df_5m, fase=fase, logger=logger)
+        cargar_df_1h(df=df_1h, fase=fase, logger=logger)
 
     logging.info("ETL terminado")
