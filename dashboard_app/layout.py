@@ -27,13 +27,18 @@ def build_layout(fases):
                 labelStyle=CHECKLIST_LABEL_STYLE,
             ),
             html.H2("Evolucion temporal de variables"),
+            dcc.Checklist(
+                id="normalizar-checklist",
+                options=[{"label": "Normalizar variables", "value": "normalizar"}],
+                value=[],
+            ),
             dcc.Dropdown(
                 id="freq-dropdown",
                 options=[
                     {"label": "5 minutos", "value": "5min"},
                     {"label": "1 hora", "value": "1h"},
                 ],
-                value="5min",
+                value="1h",
             ),
             dcc.Dropdown(
                 id="modo-dropdown",
@@ -47,11 +52,6 @@ def build_layout(fases):
                 id="grupo-dropdown",
                 options=[{"label": k, "value": k} for k in GRUPOS.keys()],
                 value="Temperatura",
-            ),
-            dcc.Checklist(
-                id="normalizar-checklist",
-                options=[{"label": "Normalizar variables", "value": "normalizar"}],
-                value=[],
             ),
             dcc.Checklist(
                 id="columnas-checklist",

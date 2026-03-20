@@ -7,6 +7,12 @@ from dashboard_app.data import (
     combinar_dataframes_por_fase,
 )
 
+CHECKLIST_GRID_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
+    "gap": "8px 16px",
+}
+
 
 def normalizar_serie(serie):
     rango = serie.max() - serie.min()
@@ -66,7 +72,7 @@ def register_callbacks(app):
     def mostrar_controles(modo):
         if modo == "grupo":
             return {"display": "block"}, {"display": "none"}
-        return {"display": "none"}, {"display": "block"}
+        return {"display": "none"}, CHECKLIST_GRID_STYLE
 
     @app.callback(
         Output("columnas-checklist", "options"),
