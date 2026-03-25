@@ -176,6 +176,35 @@ def construir_mascara_desde_df(df, filtros):
     return mascara
 
 
+def construir_mascara_rechazo_desde_df(df, filtros):
+    if df.empty or not filtros:
+        return None
+
+    rechazo = pd.Series(False, index=df.index)
+    for filtro in filtros:
+        columna = filtro.get("columna")
+        operador = filtro.get("operador")
+        valor = filtro.get("valor")
+
+        if columna is None or operador is None or valor is None:
+            continue
+        if columna not in df.columns:
+            continue
+
+        serie = df[columna]
+        validos = serie.notna()
+        if operador == ">":
+            rechazo |= validos & ~(serie > valor)
+        elif operador == ">=":
+            rechazo |= validos & ~(serie >= valor)
+        elif operador == "<":
+            rechazo |= validos & ~(serie < valor)
+        elif operador == "<=":
+            rechazo |= validos & ~(serie <= valor)
+
+    return rechazo
+
+
 def construir_mascara_global(freq, filtros):
     columnas_filtro = [filtro["columna"] for filtro in filtros if filtro.get("columna")]
     if not columnas_filtro:
@@ -530,9 +559,8 @@ def register_callbacks(app):
         dataframes = construir_dataframes_para_columnas(freq, columnas_requeridas)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         total = len(df_combinado.index)
-        mascara = construir_mascara_desde_df(df_combinado, filtros_guardados)
-        restantes = int(mascara.sum()) if mascara is not None else total
-        eliminadas = total - restantes
+        rechazo = construir_mascara_rechazo_desde_df(df_combinado, filtros_guardados)
+        eliminadas = int(rechazo.sum()) if rechazo is not None else 0
         porcentaje = (eliminadas / total * 100) if total else 0
 
         resumen = html.Div(
