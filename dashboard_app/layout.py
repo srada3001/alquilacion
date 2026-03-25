@@ -1,7 +1,6 @@
 from dash import dcc, html
 
-from dashboard_app.data import GRUPOS
-
+from dashboard_app.data import formatear_nombre_fase
 
 CHECKLIST_GRID_STYLE = {
     "display": "grid",
@@ -15,11 +14,29 @@ CHECKLIST_LABEL_STYLE = {
 }
 
 
-FILTRO_CONTENEDOR_STYLE = {
+SELECTORES_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(240px, 1fr) minmax(320px, 2fr) auto",
+    "gap": "12px",
+    "alignItems": "center",
+    "marginBottom": "16px",
+}
+
+
+FILTROS_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(320px, 2fr) minmax(160px, 1fr) minmax(160px, 1fr) auto",
+    "gap": "12px",
+    "alignItems": "center",
+    "marginBottom": "16px",
+}
+
+
+RESULTADOS_GRID_STYLE = {
     "display": "grid",
     "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
-    "gap": "8px 16px",
-    "alignItems": "end",
+    "gap": "16px",
+    "alignItems": "start",
 }
 
 
@@ -27,89 +44,85 @@ def build_layout(fases):
     return html.Div(
         [
             html.H1("Alquilacion", style={"textAlign": "center"}),
-            dcc.Checklist(
-                id="fases-checklist",
-                options=[{"label": f, "value": f} for f in fases],
-                value=fases[:1],
-                style=CHECKLIST_GRID_STYLE,
-                labelStyle=CHECKLIST_LABEL_STYLE,
-            ),
-            html.H2("Evolucion temporal de variables"),
-            dcc.Checklist(
-                id="normalizar-checklist",
-                options=[{"label": "Normalizar variables", "value": "normalizar"}],
-                value=[],
-            ),
-            dcc.Checklist(
-                id="activar-filtro-checklist",
-                options=[{"label": "Aplicar filtro", "value": "filtrar"}],
-                value=[],
-            ),
+            html.H2("Variables por fase"),
             html.Div(
                 [
                     dcc.Dropdown(
-                        id="filtro-columna-dropdown",
-                        options=[],
+                        id="seleccion-fases-dropdown",
+                        options=[{"label": formatear_nombre_fase(fase), "value": fase} for fase in fases],
                         value=None,
-                        placeholder="Variable para filtrar",
+                        placeholder="Seleccionar fases",
                     ),
                     dcc.Dropdown(
-                        id="filtro-operador-dropdown",
-                        options=[
-                            {"label": "Mayor que", "value": ">"},
-                            {"label": "Mayor o igual que", "value": ">="},
-                            {"label": "Menor que", "value": "<"},
-                            {"label": "Menor o igual que", "value": "<="},
-                        ],
-                        value=">",
-                        placeholder="Operador",
+                        id="seleccion-variables-dropdown",
+                        options=[],
+                        value=None,
+                        placeholder="Seleccionar variables",
                     ),
-                    dcc.Input(
-                        id="filtro-valor-input",
-                        type="number",
-                        placeholder="Valor del filtro",
+                    html.Button("Anadir", id="anadir-variable-btn", n_clicks=0),
+                ],
+                style=SELECTORES_STYLE,
+            ),
+            dcc.Store(id="variables-seleccionadas-store", data=[]),
+            html.Div(id="variables-seleccionadas-container"),
+            dcc.Store(id="vista-actual-store", data={"freq": "1h", "range": None}),
+            html.H2("Evolucion temporal de variables"),
+            html.Div(
+                [
+                    dcc.Checklist(
+                        id="normalizar-checklist",
+                        options=[{"label": "Normalizar variables", "value": "normalizar"}],
+                        value=[],
+                    ),
+                    html.Details(
+                        [
+                            html.Summary("Filtros", style={"cursor": "pointer", "fontWeight": "600"}),
+                            html.Div(
+                                [
+                                    dcc.Dropdown(id="filtro-variable-crear-dropdown", options=[], value=None, placeholder="Variable"),
+                                    dcc.Dropdown(
+                                        id="filtro-operador-crear-dropdown",
+                                        options=[
+                                            {"label": "Mayor que", "value": ">"},
+                                            {"label": "Mayor o igual que", "value": ">="},
+                                            {"label": "Menor que", "value": "<"},
+                                            {"label": "Menor o igual que", "value": "<="},
+                                        ],
+                                        value=">",
+                                        placeholder="Operador",
+                                    ),
+                                    dcc.Input(
+                                        id="filtro-valor-crear-input",
+                                        type="number",
+                                        placeholder="Valor del filtro",
+                                    ),
+                                    html.Button("Anadir", id="anadir-filtro-btn", n_clicks=0),
+                                ],
+                                style=FILTROS_STYLE,
+                            ),
+                            html.Div(id="filtros-container"),
+                            html.Div(id="filtros-resumen"),
+                        ]
                     ),
                 ],
-                id="filtro-container",
-                style={"display": "none"},
+                style={
+                    "display": "flex",
+                    "gap": "12px",
+                    "alignItems": "flex-start",
+                    "marginBottom": "12px",
+                },
             ),
-            dcc.Dropdown(
-                id="freq-dropdown",
-                options=[
-                    {"label": "5 minutos", "value": "5min"},
-                    {"label": "1 hora", "value": "1h"},
-                ],
-                value="1h",
-            ),
-            dcc.Dropdown(
-                id="modo-dropdown",
-                options=[
-                    {"label": "Por grupo", "value": "grupo"},
-                    {"label": "Seleccion manual", "value": "manual"},
-                ],
-                value="grupo",
-            ),
-            dcc.Dropdown(
-                id="grupo-dropdown",
-                options=[{"label": k, "value": k} for k in GRUPOS.keys()],
-                value="Temperatura",
-            ),
-            dcc.Checklist(
-                id="columnas-checklist",
-                options=[],
-                value=[],
-                style=CHECKLIST_GRID_STYLE,
-                labelStyle=CHECKLIST_LABEL_STYLE,
-            ),
+            dcc.Store(id="filtros-store", data=[]),
             dcc.Graph(id="grafico"),
-            html.H3("Relaciones lineales entre variables"),
+            html.H3("Relaciones lineales, descripcion e histograma"),
             dcc.Checklist(
-                id="correlacion-columnas-checklist",
+                id="correlacion-seleccion-checklist",
                 options=[],
                 value=[],
                 style=CHECKLIST_GRID_STYLE,
                 labelStyle=CHECKLIST_LABEL_STYLE,
             ),
+            html.Button("Calcular", id="calcular-correlaciones-btn", n_clicks=0),
             html.Div(id="correlaciones-container"),
         ]
     )
