@@ -1,24 +1,24 @@
-from dash import ALL, Input, Output, State, callback_context, dcc, html
+from dash import ALL, Input, Output, State, callback_context, html
 import pandas as pd
 import plotly.graph_objects as go
 
 from dashboard_app.data import (
     cargar_dataframes_columnas,
-    cargar_df_columnas,
     combinar_dataframes_por_fase,
     formatear_nombre_fase,
     obtener_columnas_fase,
-    obtener_columnas_numericas_fase,
-    obtener_fases,
 )
-
-
-OPERADORES_FILTRO = [
-    {"label": "Mayor que", "value": ">"},
-    {"label": "Mayor o igual que", "value": ">="},
-    {"label": "Menor que", "value": "<"},
-    {"label": "Menor o igual que", "value": "<="},
-]
+from dashboard_app.domain.filters import (
+    OPERADORES_FILTRO,
+    construir_mascara_desde_df,
+    construir_mascara_rechazo_desde_df,
+)
+from dashboard_app.domain.statistics import (
+    calcular_correlaciones_para_variable,
+    construir_histograma,
+    construir_tabla_correlacion,
+    construir_tabla_describe,
+)
 
 
 BADGE_CONTAINER_STYLE = {
@@ -148,63 +148,6 @@ def construir_dataframes_para_columnas(freq, columnas_requeridas):
     )
 
 
-def construir_mascara_desde_df(df, filtros):
-    if df.empty or not filtros:
-        return None
-
-    mascara = pd.Series(True, index=df.index)
-    for filtro in filtros:
-        columna = filtro.get("columna")
-        operador = filtro.get("operador")
-        valor = filtro.get("valor")
-
-        if columna is None or operador is None or valor is None:
-            continue
-        if columna not in df.columns:
-            continue
-
-        serie = df[columna]
-        if operador == ">":
-            mascara &= serie > valor
-        elif operador == ">=":
-            mascara &= serie >= valor
-        elif operador == "<":
-            mascara &= serie < valor
-        elif operador == "<=":
-            mascara &= serie <= valor
-
-    return mascara
-
-
-def construir_mascara_rechazo_desde_df(df, filtros):
-    if df.empty or not filtros:
-        return None
-
-    rechazo = pd.Series(False, index=df.index)
-    for filtro in filtros:
-        columna = filtro.get("columna")
-        operador = filtro.get("operador")
-        valor = filtro.get("valor")
-
-        if columna is None or operador is None or valor is None:
-            continue
-        if columna not in df.columns:
-            continue
-
-        serie = df[columna]
-        validos = serie.notna()
-        if operador == ">":
-            rechazo |= validos & ~(serie > valor)
-        elif operador == ">=":
-            rechazo |= validos & ~(serie >= valor)
-        elif operador == "<":
-            rechazo |= validos & ~(serie < valor)
-        elif operador == "<=":
-            rechazo |= validos & ~(serie <= valor)
-
-    return rechazo
-
-
 def construir_mascara_global(freq, filtros):
     columnas_filtro = [filtro["columna"] for filtro in filtros if filtro.get("columna")]
     if not columnas_filtro:
@@ -215,103 +158,15 @@ def construir_mascara_global(freq, filtros):
     return construir_mascara_desde_df(df_filtros, filtros)
 
 
-def construir_tabla_simple(titulo, filas):
-    return html.Div([html.H5(titulo), html.Table(filas)])
-
-
-def construir_tabla_describe(serie):
-    descripcion = serie.describe()
-    filas = [html.Tr([html.Th("Estadistica"), html.Th("Valor")])]
-
-    for indice, valor in descripcion.items():
-        texto_valor = f"{valor:.4f}" if isinstance(valor, (int, float)) else str(valor)
-        filas.append(html.Tr([html.Td(str(indice)), html.Td(texto_valor)]))
-
-    return construir_tabla_simple("Descripcion estadistica", filas)
-
-
-def construir_tabla_correlacion(correlaciones):
-    filas = [html.Tr([html.Th("Variable"), html.Th("Correlacion")])]
-
-    for variable, valor in correlaciones.items():
-        filas.append(
-            html.Tr(
-                [
-                    html.Td(construir_etiqueta_columna(variable)),
-                    html.Td(f"{valor:.4f}"),
-                ]
-            )
-        )
-
-    return construir_tabla_simple("Correlaciones lineales", filas)
-
-
-def construir_histograma(serie, columna_objetivo):
-    figura = go.Figure(
-        data=[
-            go.Histogram(
-                x=serie.dropna(),
-                nbinsx=30,
-                name=construir_etiqueta_columna(columna_objetivo),
-            )
-        ]
-    )
-    figura.update_layout(
-        title="Histograma",
-        margin=dict(l=20, r=20, t=40, b=20),
-        height=320,
-    )
-    return dcc.Graph(figure=figura, config={"displayModeBar": False})
-
-
-def calcular_correlaciones_para_variable(freq, columna_objetivo, mascara_global):
-    correlaciones = []
-    fase_objetivo, nombre_objetivo = separar_valor_columna(columna_objetivo)
-    df_objetivo = cargar_df_columnas(fase_objetivo, freq, [nombre_objetivo])
-    serie_objetivo = df_objetivo[nombre_objetivo]
-
-    if mascara_global is not None:
-        serie_objetivo = serie_objetivo.loc[
-            mascara_global.reindex(serie_objetivo.index, fill_value=False)
-        ]
-
-    for fase in obtener_fases():
-        columnas_numericas = sorted(obtener_columnas_numericas_fase(fase, freq))
-        if not columnas_numericas:
-            continue
-
-        df_fase = cargar_df_columnas(fase, freq, columnas_numericas)
-        if mascara_global is not None:
-            mascara_fase = mascara_global.reindex(df_fase.index, fill_value=False)
-            df_fase = df_fase.loc[mascara_fase]
-
-        if df_fase.empty or serie_objetivo.empty:
-            continue
-
-        correlacion_fase = df_fase.corrwith(serie_objetivo)
-        correlacion_fase.index = [
-            construir_valor_columna(fase, columna)
-            for columna in correlacion_fase.index
-        ]
-        correlaciones.append(correlacion_fase.dropna())
-
-    if not correlaciones:
-        return pd.Series(dtype=float), serie_objetivo
-
-    correlaciones_totales = pd.concat(correlaciones).sort_values(ascending=False)
-    correlaciones_totales = correlaciones_totales.drop(labels=[columna_objetivo], errors="ignore")
-    return correlaciones_totales, serie_objetivo
-
-
 def construir_bloque_resultado(columna_objetivo, correlaciones, serie_objetivo):
     return html.Div(
         [
             html.H4(construir_etiqueta_columna(columna_objetivo)),
             html.Div(
                 [
-                    construir_tabla_correlacion(correlaciones),
+                    construir_tabla_correlacion(correlaciones, construir_etiqueta_columna),
                     construir_tabla_describe(serie_objetivo.dropna()),
-                    construir_histograma(serie_objetivo, columna_objetivo),
+                    construir_histograma(serie_objetivo, columna_objetivo, construir_etiqueta_columna),
                 ],
                 style=RESULTADOS_GRID_STYLE,
             ),
@@ -331,10 +186,7 @@ def construir_chip_variable(variable):
 
 
 def construir_chip_filtro(filtro):
-    columna = filtro["columna"]
-    operador = filtro["operador"]
-    valor = filtro["valor"]
-    texto = f"{construir_etiqueta_columna(columna)} {operador} {valor}"
+    texto = f"{construir_etiqueta_columna(filtro['columna'])} {filtro['operador']} {filtro['valor']}"
     return html.Div(
         [
             html.Span(texto),
@@ -363,6 +215,8 @@ def obtener_freq_desde_relayout(relayout_data):
     except Exception:
         return "1h"
 
+    if inicio_dt is None or fin_dt is None:
+        return "1h"
     if pd.isna(inicio_dt) or pd.isna(fin_dt):
         return "1h"
 
@@ -380,36 +234,36 @@ def obtener_rango_desde_relayout(relayout_data):
     return [inicio, fin]
 
 
-def obtener_freq_desde_vista(vista_actual):
-    if not vista_actual:
+def obtener_freq_desde_estado_grafico(estado_grafico):
+    if not estado_grafico:
         return "1h"
-    return vista_actual.get("freq", "1h")
+    return estado_grafico.get("freq", "1h")
 
 
-def obtener_rango_desde_vista(vista_actual):
-    if not vista_actual:
+def obtener_rango_desde_estado_grafico(estado_grafico):
+    if not estado_grafico:
         return None
-    return vista_actual.get("range")
+    return estado_grafico.get("range")
 
 
-def register_callbacks(app):
+def register_dashboard_callbacks(app):
     @app.callback(
-        Output("vista-actual-store", "data", allow_duplicate=True),
+        Output("estado-grafico-store", "data", allow_duplicate=True),
         Input("grafico", "relayoutData"),
-        State("vista-actual-store", "data"),
+        State("estado-grafico-store", "data"),
         prevent_initial_call=True,
     )
-    def actualizar_vista_actual(relayout_data, vista_actual):
-        vista_actual = dict(vista_actual or {"freq": "1h", "range": None})
+    def actualizar_estado_grafico(relayout_data, estado_grafico):
+        estado_grafico = dict(estado_grafico or {"freq": "1h", "range": None})
         if not relayout_data:
-            return vista_actual
+            return estado_grafico
 
         if relayout_data.get("xaxis.autorange"):
             return {"freq": "1h", "range": None}
 
         rango = obtener_rango_desde_relayout(relayout_data)
         if rango is None:
-            return vista_actual
+            return estado_grafico
 
         return {
             "freq": obtener_freq_desde_relayout(relayout_data),
@@ -419,12 +273,12 @@ def register_callbacks(app):
     @app.callback(
         Output("seleccion-variables-dropdown", "options"),
         Output("seleccion-variables-dropdown", "value"),
-        Input("vista-actual-store", "data"),
+        Input("estado-grafico-store", "data"),
         Input("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
     )
-    def actualizar_variables_selector(vista_actual, fase, valor_actual):
-        freq = obtener_freq_desde_vista(vista_actual)
+    def actualizar_variables_selector(estado_grafico, fase, valor_actual):
+        freq = obtener_freq_desde_estado_grafico(estado_grafico)
         opciones = construir_opciones_variables_por_fase(freq, fase, incluir_grupos=True)
         valores_validos = {opcion["value"] for opcion in opciones}
         return opciones, valor_actual if valor_actual in valores_validos else None
@@ -445,19 +299,19 @@ def register_callbacks(app):
         return opciones, valor
 
     @app.callback(
-        Output("variables-seleccionadas-store", "data"),
+        Output("variables-seleccionadas-store", "data", allow_duplicate=True),
         Input("anadir-variable-btn", "n_clicks"),
         Input({"type": "retirar-variable-btn", "value": ALL}, "n_clicks"),
-        State("vista-actual-store", "data"),
+        State("estado-grafico-store", "data"),
         State("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
         State("variables-seleccionadas-store", "data"),
         prevent_initial_call=True,
     )
-    def actualizar_variables_agregadas(_, __, vista_actual, fase, valor_variable, variables_agregadas):
+    def actualizar_variables_agregadas(_, __, estado_grafico, fase, valor_variable, variables_agregadas):
         variables_agregadas = list(variables_agregadas or [])
         disparador = callback_context.triggered_id
-        freq = obtener_freq_desde_vista(vista_actual)
+        freq = obtener_freq_desde_estado_grafico(estado_grafico)
 
         if disparador == "anadir-variable-btn":
             nuevas = expandir_valor_variable(freq, fase, valor_variable)
@@ -476,36 +330,28 @@ def register_callbacks(app):
     )
     def mostrar_variables_agregadas(variables_agregadas):
         if not variables_agregadas:
-            return html.Div("No hay variables añadidas.")
+            return html.Div("No hay variables anadidas.")
         return html.Div(
             [construir_chip_variable(variable) for variable in variables_agregadas],
             style=BADGE_CONTAINER_STYLE,
         )
 
     @app.callback(
-        Output("filtros-store", "data"),
+        Output("filtros-store", "data", allow_duplicate=True),
         Output("filtro-valor-crear-input", "value"),
         Input("anadir-filtro-btn", "n_clicks"),
         Input({"type": "retirar-filtro-btn", "value": ALL}, "n_clicks"),
-        State("vista-actual-store", "data"),
+        State("estado-grafico-store", "data"),
         State("filtro-variable-crear-dropdown", "value"),
         State("filtro-operador-crear-dropdown", "value"),
         State("filtro-valor-crear-input", "value"),
         State("filtros-store", "data"),
         prevent_initial_call=True,
     )
-    def actualizar_filtros_agregados(
-        _,
-        __,
-        vista_actual,
-        valor_variable,
-        operador,
-        valor,
-        filtros_guardados,
-    ):
+    def actualizar_filtros_agregados(_, __, estado_grafico, valor_variable, operador, valor, filtros_guardados):
         filtros_guardados = list(filtros_guardados or [])
         disparador = callback_context.triggered_id
-        freq = obtener_freq_desde_vista(vista_actual)
+        _ = obtener_freq_desde_estado_grafico(estado_grafico)
 
         if disparador == "anadir-filtro-btn":
             columnas = [valor_variable] if valor_variable else []
@@ -535,12 +381,11 @@ def register_callbacks(app):
     @app.callback(
         Output("filtros-container", "children"),
         Output("filtros-resumen", "children"),
-        Input("vista-actual-store", "data"),
+        Input("estado-grafico-store", "data"),
         Input("filtros-store", "data"),
         Input("variables-seleccionadas-store", "data"),
     )
-    def mostrar_filtros(vista_actual, filtros_guardados, variables_agregadas):
-        freq = obtener_freq_desde_vista(vista_actual)
+    def mostrar_filtros(estado_grafico, filtros_guardados, variables_seleccionadas):
         filtros_guardados = list(filtros_guardados or [])
         if filtros_guardados:
             chips = html.Div(
@@ -548,14 +393,15 @@ def register_callbacks(app):
                 style=BADGE_CONTAINER_STYLE,
             )
         else:
-            chips = html.Div("No hay filtros añadidos.")
+            chips = html.Div("No hay filtros anadidos.")
 
-        if not variables_agregadas:
+        if not variables_seleccionadas:
             return chips, html.Div("Muestras eliminadas: 0 (0.00% del dataframe total).")
 
-        columnas_requeridas = list(variables_agregadas) + [
+        columnas_requeridas = list(variables_seleccionadas) + [
             filtro["columna"] for filtro in filtros_guardados if filtro.get("columna")
         ]
+        freq = obtener_freq_desde_estado_grafico(estado_grafico)
         dataframes = construir_dataframes_para_columnas(freq, columnas_requeridas)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         total = len(df_combinado.index)
@@ -581,14 +427,13 @@ def register_callbacks(app):
 
     @app.callback(
         Output("grafico", "figure"),
-        Input("vista-actual-store", "data"),
+        Input("estado-grafico-store", "data"),
         Input("normalizar-checklist", "value"),
         Input("variables-seleccionadas-store", "data"),
         Input("filtros-store", "data"),
     )
-    def actualizar_grafico(vista_actual, normalizar_opciones, variables_seleccionadas, filtros_guardados):
-        freq = obtener_freq_desde_vista(vista_actual)
-        rango_visible = obtener_rango_desde_vista(vista_actual)
+    def actualizar_grafico(estado_grafico, normalizar_opciones, variables_seleccionadas, filtros_guardados):
+        rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
         columnas = list(variables_seleccionadas or [])
         if not columnas:
             return go.Figure()
@@ -597,7 +442,7 @@ def register_callbacks(app):
         columnas_requeridas = columnas + [
             filtro["columna"] for filtro in filtros_guardados if filtro.get("columna")
         ]
-
+        freq = obtener_freq_desde_estado_grafico(estado_grafico)
         dataframes = construir_dataframes_para_columnas(freq, columnas_requeridas)
         df_combinado = combinar_dataframes_por_fase(dataframes)
         mascara = construir_mascara_desde_df(df_combinado, filtros_guardados)
@@ -624,6 +469,7 @@ def register_callbacks(app):
             title="Evolucion temporal de variables seleccionadas",
             hovermode="x unified",
             xaxis=dict(rangeslider=dict(visible=True), type="date"),
+            showlegend=True,
             uirevision="grafico-principal",
         )
         if rango_visible is not None:
@@ -631,7 +477,7 @@ def register_callbacks(app):
         return fig
 
     @app.callback(
-        Output("correlaciones-container", "children"),
+        Output("correlaciones-container", "children", allow_duplicate=True),
         Input("calcular-correlaciones-btn", "n_clicks"),
         State("correlacion-seleccion-checklist", "value"),
         State("filtros-store", "data"),
@@ -651,6 +497,8 @@ def register_callbacks(app):
                 freq,
                 columna,
                 mascara_global,
+                separar_valor_columna=separar_valor_columna,
+                construir_valor_columna=construir_valor_columna,
             )
             resultados.append(construir_bloque_resultado(columna, correlaciones, serie_objetivo))
 

@@ -65,7 +65,7 @@ def build_layout(fases):
             ),
             dcc.Store(id="variables-seleccionadas-store", data=[]),
             html.Div(id="variables-seleccionadas-container"),
-            dcc.Store(id="vista-actual-store", data={"freq": "1h", "range": None}),
+            dcc.Store(id="estado-grafico-store", data={"freq": "1h", "range": None}),
             html.H2("Evolucion temporal de variables"),
             html.Div(
                 [
