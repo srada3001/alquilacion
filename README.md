@@ -36,7 +36,8 @@ data/
 
 1. Colocar los CSV de entrada en `data/data_original/<fase>/<parte>/`.
 2. Ejecutar el ETL para generar parquets a 5 minutos y 1 hora, logs y resumenes.
-3. Abrir la app para visualizar las fases con output disponible.
+3. Ejecutar el post-proceso para agregar variables derivadas puntuales sobre los parquets ya generados.
+4. Abrir la app para visualizar las fases con output disponible.
 
 ## Ejecucion
 
@@ -44,6 +45,12 @@ Ejecutar ETL:
 
 ```bash
 python run_etl.py
+```
+
+Ejecutar el post-proceso de variables derivadas:
+
+```bash
+python run_post_etl.py
 ```
 
 Ejecutar la app:
