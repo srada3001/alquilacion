@@ -2,7 +2,8 @@ from dash import dcc, html
 import pandas as pd
 import plotly.graph_objects as go
 
-from dashboard_app.data import cargar_df_columnas, obtener_columnas_numericas_fase, obtener_fases
+from analysis_dataset import load_combined_dataset
+from dashboard_app.data import obtener_columnas_numericas_dataset
 
 
 def construir_tabla_simple(titulo, filas):
@@ -58,42 +59,25 @@ def calcular_correlaciones_para_variable(
     freq,
     columna_objetivo,
     mascara_global,
-    separar_valor_columna,
-    construir_valor_columna,
 ):
-    correlaciones = []
-    fase_objetivo, nombre_objetivo = separar_valor_columna(columna_objetivo)
-    df_objetivo = cargar_df_columnas(fase_objetivo, freq, [nombre_objetivo])
-    serie_objetivo = df_objetivo[nombre_objetivo]
+    columnas_numericas = obtener_columnas_numericas_dataset(freq)
+    if columna_objetivo not in columnas_numericas:
+        columnas_numericas.append(columna_objetivo)
+
+    df_numerico = load_combined_dataset(freq, columns=columnas_numericas)
+    if df_numerico.empty or columna_objetivo not in df_numerico.columns:
+        return pd.Series(dtype=float), pd.Series(dtype=float)
+
+    serie_objetivo = df_numerico[columna_objetivo]
 
     if mascara_global is not None:
-        serie_objetivo = serie_objetivo.loc[
-            mascara_global.reindex(serie_objetivo.index, fill_value=False)
-        ]
+        mascara = mascara_global.reindex(df_numerico.index, fill_value=False)
+        df_numerico = df_numerico.loc[mascara]
+        serie_objetivo = serie_objetivo.loc[mascara]
 
-    for fase in obtener_fases():
-        columnas_numericas = sorted(obtener_columnas_numericas_fase(fase, freq))
-        if not columnas_numericas:
-            continue
-
-        df_fase = cargar_df_columnas(fase, freq, columnas_numericas)
-        if mascara_global is not None:
-            mascara_fase = mascara_global.reindex(df_fase.index, fill_value=False)
-            df_fase = df_fase.loc[mascara_fase]
-
-        if df_fase.empty or serie_objetivo.empty:
-            continue
-
-        correlacion_fase = df_fase.corrwith(serie_objetivo)
-        correlacion_fase.index = [
-            construir_valor_columna(fase, columna)
-            for columna in correlacion_fase.index
-        ]
-        correlaciones.append(correlacion_fase.dropna())
-
-    if not correlaciones:
+    if df_numerico.empty or serie_objetivo.empty:
         return pd.Series(dtype=float), serie_objetivo
 
-    correlaciones_totales = pd.concat(correlaciones).sort_values(ascending=False)
+    correlaciones_totales = df_numerico.corrwith(serie_objetivo).dropna().sort_values(ascending=False)
     correlaciones_totales = correlaciones_totales.drop(labels=[columna_objetivo], errors="ignore")
     return correlaciones_totales, serie_objetivo

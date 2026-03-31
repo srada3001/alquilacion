@@ -1,6 +1,7 @@
 # Alquilacion
 
-Proyecto para procesar datos de fases mediante un ETL y visualizarlos en una app Dash.
+Proyecto para procesar datos de fases mediante un ETL, enriquecerlos en un post-ETL
+y visualizarlos en una app Dash.
 
 ## Componentes principales
 
@@ -9,7 +10,7 @@ Proyecto para procesar datos de fases mediante un ETL y visualizarlos en una app
 - `config.py`: configuracion compartida de rutas y nombres de archivos.
 - `etl/`: paquete con la logica de extraccion, transformacion, carga y utilidades.
 - `dashboard_app/`: paquete con la logica, layout y callbacks del dashboard.
-- `data/`: carpeta con datos originales, outputs, logs y resumenes.
+- `data/`: carpeta con datos originales, outputs base por fase, datasets unificados, logs y resumenes.
 
 ## Estructura esperada de datos
 
@@ -24,8 +25,9 @@ data/
         archivo3.csv
   outputs/
     <fase>.parquet
-  outputs_1h/
-    <fase>.parquet
+  analysis/
+    all_phases_5min.parquet
+    all_phases_1h.parquet
   logs/
     <fase>.log
   resumenes/
@@ -35,9 +37,9 @@ data/
 ## Flujo de trabajo
 
 1. Colocar los CSV de entrada en `data/data_original/<fase>/<parte>/`.
-2. Ejecutar el ETL para generar parquets a 5 minutos y 1 hora, logs y resumenes.
-3. Ejecutar el post-proceso para agregar variables derivadas puntuales sobre los parquets ya generados.
-4. Abrir la app para visualizar las fases con output disponible.
+2. Ejecutar el ETL para generar parquets base por fase a 5 minutos, logs y resumenes.
+3. Ejecutar el post-proceso para agregar variables derivadas y generar los datasets unificados a 5 minutos y 1 hora.
+4. Abrir la app para visualizar y analizar usando los datasets unificados.
 
 ## Ejecucion
 
@@ -63,10 +65,10 @@ python dashboard_app.py
 
 - Cada fase tiene una carpeta dentro de `data/data_original`.
 - Cada output procesado base se guarda como `data/outputs/<fase>.parquet` con frecuencia de 5 minutos.
-- Cada output procesado agregado por hora se guarda como `data/outputs_1h/<fase>.parquet`.
+- Los datasets listos para analisis se guardan como `data/analysis/all_phases_5min.parquet` y `data/analysis/all_phases_1h.parquet`.
 - Cada log se guarda como `data/logs/<fase>.log`.
 - Cada resumen se guarda como `data/resumenes/<fase>.csv`.
-- La app lista fases a partir de los `.parquet` disponibles en `data/outputs`.
+- La app lista fases a partir de las columnas presentes en los datasets unificados.
 
 ## Dependencias principales
 

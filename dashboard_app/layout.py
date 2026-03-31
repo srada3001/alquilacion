@@ -44,7 +44,7 @@ def build_layout(fases):
     return html.Div(
         [
             html.H1("Alquilacion", style={"textAlign": "center"}),
-            html.H2("Variables por fase"),
+            html.H2("Variables"),
             html.Div(
                 [
                     dcc.Dropdown(

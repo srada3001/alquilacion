@@ -1,14 +1,6 @@
 import pandas as pd
 
 
-OPERADORES_FILTRO = [
-    {"label": "Mayor que", "value": ">"},
-    {"label": "Mayor o igual que", "value": ">="},
-    {"label": "Menor que", "value": "<"},
-    {"label": "Menor o igual que", "value": "<="},
-]
-
-
 def construir_mascara_desde_df(df, filtros):
     if df.empty or not filtros:
         return None

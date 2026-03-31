@@ -1,7 +1,6 @@
 import os
 
 from config import (
-    get_processed_output_1h_path,
     get_processed_output_path,
     get_summary_path,
 )
@@ -21,11 +20,3 @@ def cargar_df(df, fase, logger):
     os.makedirs(os.path.dirname(carga_path), exist_ok=True)
     df.to_parquet(carga_path, engine="pyarrow")
     logger.info("Data procesada guardada")
-
-
-def cargar_df_1h(df, fase, logger):
-    logger.info("Guardando data procesada a 1 hora")
-    carga_path = get_processed_output_1h_path(fase)
-    os.makedirs(os.path.dirname(carga_path), exist_ok=True)
-    df.to_parquet(carga_path, engine="pyarrow")
-    logger.info("Data procesada a 1 hora guardada")

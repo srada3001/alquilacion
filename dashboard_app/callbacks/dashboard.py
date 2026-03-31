@@ -2,14 +2,9 @@ from dash import ALL, Input, Output, State, callback_context, html
 import pandas as pd
 import plotly.graph_objects as go
 
-from dashboard_app.data import (
-    cargar_dataframes_columnas,
-    combinar_dataframes_por_fase,
-    formatear_nombre_fase,
-    obtener_columnas_fase,
-)
+from analysis_dataset import load_combined_dataset
+from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
 from dashboard_app.domain.filters import (
-    OPERADORES_FILTRO,
     construir_mascara_desde_df,
     construir_mascara_rechazo_desde_df,
 )
@@ -128,24 +123,11 @@ def expandir_valor_variable(freq, fase, valor):
     return [valor]
 
 
-def agrupar_columnas_por_fase(columnas_combinadas):
-    columnas_por_fase = {}
-
-    for columna in columnas_combinadas or []:
-        fase, nombre_columna = separar_valor_columna(columna)
-        columnas_por_fase.setdefault(fase, [])
-        columnas_por_fase[fase].append(nombre_columna)
-
-    return columnas_por_fase
-
-
-def construir_dataframes_para_columnas(freq, columnas_requeridas):
-    columnas_por_fase = agrupar_columnas_por_fase(columnas_requeridas)
-    return cargar_dataframes_columnas(
-        list(columnas_por_fase.keys()),
-        freq,
-        columnas_por_fase=columnas_por_fase,
-    )
+def cargar_dataset_para_columnas(freq, columnas_requeridas):
+    columnas = list(dict.fromkeys(columnas_requeridas or []))
+    if not columnas:
+        return pd.DataFrame()
+    return load_combined_dataset(freq, columns=columnas)
 
 
 def construir_mascara_global(freq, filtros):
@@ -153,8 +135,7 @@ def construir_mascara_global(freq, filtros):
     if not columnas_filtro:
         return None
 
-    dataframes = construir_dataframes_para_columnas(freq, columnas_filtro)
-    df_filtros = combinar_dataframes_por_fase(dataframes)
+    df_filtros = cargar_dataset_para_columnas(freq, columnas_filtro)
     return construir_mascara_desde_df(df_filtros, filtros)
 
 
@@ -402,8 +383,7 @@ def register_dashboard_callbacks(app):
             filtro["columna"] for filtro in filtros_guardados if filtro.get("columna")
         ]
         freq = obtener_freq_desde_estado_grafico(estado_grafico)
-        dataframes = construir_dataframes_para_columnas(freq, columnas_requeridas)
-        df_combinado = combinar_dataframes_por_fase(dataframes)
+        df_combinado = cargar_dataset_para_columnas(freq, columnas_requeridas)
         total = len(df_combinado.index)
         rechazo = construir_mascara_rechazo_desde_df(df_combinado, filtros_guardados)
         eliminadas = int(rechazo.sum()) if rechazo is not None else 0
@@ -443,8 +423,7 @@ def register_dashboard_callbacks(app):
             filtro["columna"] for filtro in filtros_guardados if filtro.get("columna")
         ]
         freq = obtener_freq_desde_estado_grafico(estado_grafico)
-        dataframes = construir_dataframes_para_columnas(freq, columnas_requeridas)
-        df_combinado = combinar_dataframes_por_fase(dataframes)
+        df_combinado = cargar_dataset_para_columnas(freq, columnas_requeridas)
         mascara = construir_mascara_desde_df(df_combinado, filtros_guardados)
         df_grafico = df_combinado.where(mascara) if mascara is not None else df_combinado
 
@@ -497,8 +476,6 @@ def register_dashboard_callbacks(app):
                 freq,
                 columna,
                 mascara_global,
-                separar_valor_columna=separar_valor_columna,
-                construir_valor_columna=construir_valor_columna,
             )
             resultados.append(construir_bloque_resultado(columna, correlaciones, serie_objetivo))
 

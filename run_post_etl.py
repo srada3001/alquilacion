@@ -2,10 +2,15 @@ import os
 
 import pandas as pd
 
+from analysis_dataset import (
+    build_combined_dataset_1h,
+    build_combined_dataset_5m,
+    get_combined_dataset_path_1h,
+    get_combined_dataset_path_5m,
+)
 from config import (
     DATA_PATH,
     PARQUET_EXTENSION,
-    PROCESSED_DATA_1H_FOLDER,
     PROCESSED_DATA_FOLDER,
 )
 
@@ -111,12 +116,20 @@ def procesar_parquet(parquet_path):
 
 
 def main():
-    carpetas_objetivo = [PROCESSED_DATA_FOLDER, PROCESSED_DATA_1H_FOLDER]
+    print(f"Procesando carpeta: {PROCESSED_DATA_FOLDER}")
+    for parquet_path in obtener_rutas_parquet(PROCESSED_DATA_FOLDER):
+        procesar_parquet(parquet_path)
 
-    for carpeta in carpetas_objetivo:
-        print(f"Procesando carpeta: {carpeta}")
-        for parquet_path in obtener_rutas_parquet(carpeta):
-            procesar_parquet(parquet_path)
+    combinado_5m = build_combined_dataset_5m()
+    combinado_1h = build_combined_dataset_1h()
+    print(
+        f"Dataset combinado generado: {get_combined_dataset_path_5m()} "
+        f"-> {combinado_5m.shape[0]} filas, {combinado_5m.shape[1]} columnas"
+    )
+    print(
+        f"Dataset combinado generado: {get_combined_dataset_path_1h()} "
+        f"-> {combinado_1h.shape[0]} filas, {combinado_1h.shape[1]} columnas"
+    )
 
 
 if __name__ == "__main__":
