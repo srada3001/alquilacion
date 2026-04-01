@@ -8,6 +8,7 @@ from data_processing.analysis_dataset import (
     get_combined_dataset_path_1h,
     get_combined_dataset_path_5m,
 )
+from data_processing.kalman import aplicar_filtro_kalman
 from config import (
     DATA_PATH,
     PARQUET_EXTENSION,
@@ -23,8 +24,8 @@ VARIABLES_KALMAN = {
     "AI-1224A": "AI-1224A-kalman",
     "AI-1224B": "AI-1224B-kalman",
 }
-KALMAN_PROCESS_VARIANCE = 0.005
-KALMAN_MEASUREMENT_VARIANCE = 25.0
+KALMAN_PROCESS_VARIANCE = 0.0005
+KALMAN_MEASUREMENT_VARIANCE = 100.0
 
 
 def obtener_rutas_parquet(carpeta):
@@ -53,35 +54,6 @@ def agregar_variables_desviacion(df):
     return df, columnas_agregadas
 
 
-def aplicar_filtro_kalman(serie):
-    observada = pd.to_numeric(serie, errors="coerce")
-    estimada = []
-    estimacion_actual = None
-    varianza_actual = 1.0
-
-    for valor in observada:
-        if pd.isna(valor):
-            estimada.append(pd.NA)
-            continue
-
-        if estimacion_actual is None:
-            estimacion_actual = float(valor)
-            estimada.append(estimacion_actual)
-            continue
-
-        varianza_predicha = varianza_actual + KALMAN_PROCESS_VARIANCE
-        ganancia = varianza_predicha / (
-            varianza_predicha + KALMAN_MEASUREMENT_VARIANCE
-        )
-        estimacion_actual = estimacion_actual + ganancia * (
-            float(valor) - estimacion_actual
-        )
-        varianza_actual = (1 - ganancia) * varianza_predicha
-        estimada.append(estimacion_actual)
-
-    return pd.Series(estimada, index=serie.index, dtype="Float64")
-
-
 def agregar_variables_kalman(df):
     columnas_agregadas = []
 
@@ -90,7 +62,11 @@ def agregar_variables_kalman(df):
             continue
         if columna_nueva in df.columns:
             df = df.drop(columns=[columna_nueva])
-        df[columna_nueva] = aplicar_filtro_kalman(df[columna_origen])
+        df[columna_nueva] = aplicar_filtro_kalman(
+            df[columna_origen],
+            process_variance=KALMAN_PROCESS_VARIANCE,
+            measurement_variance=KALMAN_MEASUREMENT_VARIANCE,
+        )
         columnas_agregadas.append(columna_nueva)
 
     return df, columnas_agregadas
