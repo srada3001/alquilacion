@@ -1,7 +1,7 @@
 from pyarrow import parquet as pq
 from pyarrow import types as patypes
 
-from analysis_dataset import get_combined_dataset_path, load_combined_dataset
+from data_processing.analysis_dataset import get_combined_dataset_path, load_combined_dataset
 
 
 def formatear_nombre_fase(fase):

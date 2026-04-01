@@ -5,9 +5,9 @@ import warnings
 import pandas as pd
 
 from config import DATA_PATH, RAW_DATA_FOLDER, get_raw_phase_path
-from etl.extract import buscar_csv, buscar_partes, extraer_dataframes
-from etl.load import cargar_df, guardar_resumen
-from etl.transform import (
+from data_processing.etl.extract import buscar_csv, buscar_partes, extraer_dataframes
+from data_processing.etl.load import cargar_df, guardar_resumen
+from data_processing.etl.transform import (
     ajustar_formatos,
     configurar_fecha_como_index,
     eliminar_columnas_duplicadas,
@@ -20,7 +20,7 @@ from etl.transform import (
     unir_dataframes_por_tiempo,
     unir_partes,
 )
-from etl.utils import set_logger
+from data_processing.etl.utils import set_logger
 
 warnings.filterwarnings("ignore", category=pd.errors.DtypeWarning)
 

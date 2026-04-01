@@ -1,6 +1,6 @@
 import pandas as pd
 
-from analysis_dataset import load_combined_dataset
+from data_processing.analysis_dataset import load_combined_dataset
 from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
 
 

@@ -8,7 +8,7 @@ y visualizarlos en una app Dash.
 - `dashboard_app.py`: entrypoint de la app de visualizacion de datos procesados.
 - `run_etl.py`: entrypoint para ejecutar el ETL completo.
 - `config.py`: configuracion compartida de rutas y nombres de archivos.
-- `etl/`: paquete con la logica de extraccion, transformacion, carga y utilidades.
+- `data_processing/`: paquete con la logica reusable de procesamiento de datos y construccion de datasets analiticos.
 - `dashboard_app/`: paquete con la logica, layout y callbacks del dashboard.
 - `data/`: carpeta con datos originales, outputs base por fase, datasets unificados, logs y resumenes.
 
@@ -76,14 +76,3 @@ python dashboard_app.py
 - `pyarrow`
 - `dash`
 - `plotly`
-
-## Notas
-
-- La app permite comparary relacionar multiples fases al mismo tiempo.
-- Se usa intencionalmente una frecuencia base de 5 minutos para facilitar la coherencia entre fases (algunas fueron tomadas fon frecuencia 1m y otras con frecuencia 5m).
-- Se espera que en el futuro la data faltante se incorpore con frecuencia de 1 minuto y se hagan los ajustes necesarios.
-- Dos filtros en vez de uno
-y que las histograma y todo eso se ajsute a lo sfiltros
-- AADIR HISTOGRAMA, TABLA MAX, MIN, MEAN, PORCENTAJES, K-means, barra busqueda variables, correlacion calcular atumamtico con modo manual.
-- Despues de filtrar mostrar cantidad de datos y tiempo
-- Queremos las correlaciones con todas las variables de todos los datasets

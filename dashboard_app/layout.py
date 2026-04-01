@@ -114,7 +114,7 @@ def build_layout(fases):
             ),
             dcc.Store(id="filtros-store", data=[]),
             dcc.Graph(id="grafico"),
-            html.H3("Relaciones lineales, descripcion e histograma"),
+            html.H3("Relaciones lineales, descripcion, histograma e influencias"),
             dcc.Checklist(
                 id="correlacion-seleccion-checklist",
                 options=[],
