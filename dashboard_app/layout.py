@@ -1,6 +1,7 @@
 from dash import dcc, html
 
 from dashboard_app.data import formatear_nombre_fase
+from dashboard_app.repositories.analysis_cache import get_precomputed_analysis_columns
 
 CHECKLIST_GRID_STYLE = {
     "display": "grid",
@@ -32,10 +33,10 @@ FILTROS_STYLE = {
 }
 
 
-RESULTADOS_GRID_STYLE = {
+ANALISIS_SECTIONS_STYLE = {
     "display": "grid",
-    "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
-    "gap": "16px",
+    "gridTemplateColumns": "minmax(0, 2fr) minmax(0, 1fr)",
+    "gap": "24px",
     "alignItems": "start",
 }
 
@@ -114,15 +115,44 @@ def build_layout(fases):
             ),
             dcc.Store(id="filtros-store", data=[]),
             dcc.Graph(id="grafico"),
-            html.H3("Relaciones lineales, descripcion, histograma e influencias"),
-            dcc.Checklist(
-                id="correlacion-seleccion-checklist",
-                options=[],
-                value=[],
-                style=CHECKLIST_GRID_STYLE,
-                labelStyle=CHECKLIST_LABEL_STYLE,
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H3("Analisis exploratorio"),
+                            dcc.Checklist(
+                                id="correlacion-seleccion-checklist",
+                                options=[],
+                                value=[],
+                                style=CHECKLIST_GRID_STYLE,
+                                labelStyle=CHECKLIST_LABEL_STYLE,
+                            ),
+                            html.Button("Calcular analisis", id="calcular-analysis-btn", n_clicks=0),
+                            html.Div(id="analysis-container"),
+                        ]
+                    ),
+                    html.Div(
+                        [
+                            html.H3("Analisis profundo"),
+                            dcc.Dropdown(
+                                id="deep-analysis-dropdown",
+                                options=[
+                                    {"label": columna, "value": columna}
+                                    for columna in get_precomputed_analysis_columns()
+                                ],
+                                value=None,
+                                placeholder="Seleccionar analisis profundo precomputado",
+                            ),
+                            html.Button("Calcular analisis profundo", id="calcular-deep-analysis-btn", n_clicks=0),
+                            html.Div(
+                                "Disponible solo para variables precomputadas y sin filtros activos.",
+                                style={"marginBottom": "12px"},
+                            ),
+                            html.Div(id="deep-analysis-container"),
+                        ]
+                    ),
+                ],
+                style=ANALISIS_SECTIONS_STYLE,
             ),
-            html.Button("Calcular", id="calcular-correlaciones-btn", n_clicks=0),
-            html.Div(id="correlaciones-container"),
         ]
     )
