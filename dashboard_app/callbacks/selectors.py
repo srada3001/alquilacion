@@ -1,6 +1,7 @@
 from dash import ALL, Input, Output, State, callback_context, html
 
 from dashboard_app.callbacks.common import (
+    ACCION_RETIRAR_STYLE,
     BADGE_CONTAINER_STYLE,
     BADGE_STYLE,
     construir_etiqueta_columna,
@@ -15,7 +16,12 @@ def construir_chip_variable(variable):
     return html.Div(
         [
             html.Span(construir_etiqueta_columna(variable)),
-            html.Button("Retirar", id={"type": "retirar-variable-btn", "value": variable}, n_clicks=0),
+            html.Button(
+                "-",
+                id={"type": "retirar-variable-btn", "value": variable},
+                n_clicks=0,
+                style=ACCION_RETIRAR_STYLE,
+            ),
         ],
         style=BADGE_STYLE,
     )

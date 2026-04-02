@@ -22,12 +22,33 @@ BADGE_STYLE = {
     "backgroundColor": "#f7f7f7",
 }
 
+ACCION_CIRCULAR_STYLE = {
+    "width": "28px",
+    "height": "28px",
+    "borderRadius": "50%",
+    "border": "none",
+    "display": "inline-flex",
+    "alignItems": "center",
+    "justifyContent": "center",
+    "fontSize": "18px",
+    "fontWeight": "700",
+    "lineHeight": "1",
+    "cursor": "pointer",
+    "color": "#ffffff",
+}
 
-RESULTADOS_GRID_STYLE = {
-    "display": "grid",
-    "gridTemplateColumns": "repeat(3, minmax(0, 1fr))",
-    "gap": "16px",
-    "alignItems": "start",
+ACCION_AGREGAR_STYLE = {
+    **ACCION_CIRCULAR_STYLE,
+    "backgroundColor": "#2e9f44",
+}
+
+ACCION_RETIRAR_STYLE = {
+    **ACCION_CIRCULAR_STYLE,
+    "backgroundColor": "#c83c3c",
+}
+
+TITULO_CENTRADO_STYLE = {
+    "textAlign": "center",
 }
 
 

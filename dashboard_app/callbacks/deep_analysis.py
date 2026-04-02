@@ -48,7 +48,7 @@ def construir_tabla_influencias(summary, etiquetar_columna, top_n=12):
             )
         )
 
-    return html.Div([html.H5("Influencias principales"), html.Table(filas)])
+    return html.Div([html.Table(filas)])
 
 
 def construir_grafico_influencias(summary, etiquetar_columna, top_n=10):
@@ -66,7 +66,6 @@ def construir_grafico_influencias(summary, etiquetar_columna, top_n=10):
         ]
     )
     fig.update_layout(
-        title="Top influencias por consenso",
         margin=dict(l=20, r=20, t=40, b=20),
         height=360,
     )
@@ -84,7 +83,7 @@ def construir_resumen_metricas(metrics):
         html.Tr([html.Td("R2 test"), html.Td(f"{metrics['test_r2']:.4f}")]),
         html.Tr([html.Td("MAE test"), html.Td(f"{metrics['test_mae']:.4f}")]),
     ]
-    return html.Div([html.H5("Metricas del modelo"), html.Table(filas)])
+    return html.Div([html.Table(filas)])
 
 
 def construir_bloque_analisis_profundo(influence_result):
@@ -93,12 +92,26 @@ def construir_bloque_analisis_profundo(influence_result):
 
     return html.Div(
         [
-            html.H5("Analisis profundo", style={"marginTop": "20px"}),
             html.Div(
                 [
-                    construir_tabla_influencias(summary, construir_etiqueta_columna),
-                    construir_resumen_metricas(metrics),
-                    construir_grafico_influencias(summary, construir_etiqueta_columna),
+                    html.Div(
+                        [
+                            html.H2("Influencias principales"),
+                            construir_tabla_influencias(summary, construir_etiqueta_columna),
+                        ]
+                    ),
+                    html.Div(
+                        [
+                            html.H2("Metricas del modelo"),
+                            construir_resumen_metricas(metrics),
+                        ]
+                    ),
+                    html.Div(
+                        [
+                            html.H2("Top influencias por consenso"),
+                            construir_grafico_influencias(summary, construir_etiqueta_columna),
+                        ]
+                    ),
                 ],
                 style=ANALISIS_PROFUNDO_STACK_STYLE,
             ),
@@ -106,10 +119,9 @@ def construir_bloque_analisis_profundo(influence_result):
     )
 
 
-def construir_bloque_resultado_profundo(columna_objetivo, influence_result):
+def construir_bloque_resultado_profundo(influence_result):
     return html.Div(
         [
-            html.H4(construir_etiqueta_columna(columna_objetivo)),
             construir_bloque_analisis_profundo(influence_result),
         ],
         style={"marginBottom": "24px"},
@@ -119,13 +131,12 @@ def construir_bloque_resultado_profundo(columna_objetivo, influence_result):
 def register_deep_analysis_callbacks(app):
     @app.callback(
         Output("deep-analysis-container", "children", allow_duplicate=True),
-        Input("calcular-deep-analysis-btn", "n_clicks"),
-        State("deep-analysis-dropdown", "value"),
+        Input("deep-analysis-dropdown", "value"),
         State("filtros-store", "data"),
         prevent_initial_call=True,
     )
-    def actualizar_analisis_profundo(n_clicks, columna_objetivo, filtros_guardados):
-        if not n_clicks or not columna_objetivo:
+    def actualizar_analisis_profundo(columna_objetivo, filtros_guardados):
+        if not columna_objetivo:
             return []
 
         filtros_guardados = list(filtros_guardados or [])
@@ -153,7 +164,6 @@ def register_deep_analysis_callbacks(app):
 
         return [
             construir_bloque_resultado_profundo(
-                columna_objetivo,
                 cached["influence_result"],
             )
         ]

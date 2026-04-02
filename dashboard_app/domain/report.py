@@ -5,11 +5,6 @@ import plotly.graph_objects as go
 from data_processing.analysis_dataset import load_combined_dataset
 from dashboard_app.data import obtener_columnas_numericas_dataset
 
-
-def construir_tabla_simple(titulo, filas):
-    return html.Div([html.H5(titulo), html.Table(filas)])
-
-
 def construir_tabla_describe(serie):
     descripcion = serie.describe()
     filas = [html.Tr([html.Th("Estadistica"), html.Th("Valor")])]
@@ -18,23 +13,49 @@ def construir_tabla_describe(serie):
         texto_valor = f"{valor:.4f}" if isinstance(valor, (int, float)) else str(valor)
         filas.append(html.Tr([html.Td(str(indice)), html.Td(texto_valor)]))
 
-    return construir_tabla_simple("Descripcion estadistica", filas)
+    return html.Div([html.Table(filas)])
 
 
 def construir_tabla_correlacion(correlaciones, etiquetar_columna):
-    filas = [html.Tr([html.Th("Variable"), html.Th("Correlacion")])]
+    correlaciones_filtradas = correlaciones[correlaciones.abs() >= 0.05]
+    correlaciones_filtradas = correlaciones_filtradas.reindex(
+        correlaciones_filtradas.abs().sort_values(ascending=False).index
+    )
 
-    for variable, valor in correlaciones.items():
-        filas.append(
-            html.Tr(
+    filas = [
+        html.Tr(
+            [
+                html.Th("Variable"),
+                html.Th("Correlacion"),
+                html.Th("Variable"),
+                html.Th("Correlacion"),
+            ]
+        )
+    ]
+
+    items = list(correlaciones_filtradas.items())
+    for i in range(0, len(items), 2):
+        celdas = []
+        for variable, valor in items[i:i + 2]:
+            celdas.extend(
                 [
                     html.Td(etiquetar_columna(variable)),
                     html.Td(f"{valor:.4f}"),
                 ]
             )
-        )
+        while len(celdas) < 4:
+            celdas.extend([html.Td(""), html.Td("")])
+        filas.append(html.Tr(celdas))
 
-    return construir_tabla_simple("Correlaciones lineales", filas)
+    return html.Div(
+        [
+            html.P(
+                "Se presentan las correlaciones lineales con magnitud superior a 0.05. "
+                "El orden esta dado por la magnitud y es independiente del signo."
+            ),
+            html.Table(filas),
+        ]
+    )
 
 
 def construir_histograma(serie, columna_objetivo, etiquetar_columna):
@@ -48,7 +69,6 @@ def construir_histograma(serie, columna_objetivo, etiquetar_columna):
         ]
     )
     figura.update_layout(
-        title="Histograma",
         margin=dict(l=20, r=20, t=40, b=20),
         height=320,
     )

@@ -1,0 +1,59 @@
+from dash import Input, Output, State, html
+
+from dashboard_app.callbacks.common import construir_etiqueta_columna
+from dashboard_app.callbacks.filters import construir_mascara_global
+from dashboard_app.callbacks.report_views import construir_bloque_reporte
+from dashboard_app.domain.report import calcular_correlaciones_para_variable
+
+
+def construir_bloque_resultado(correlaciones, serie_objetivo):
+    return html.Div(
+        [
+            construir_bloque_reporte(
+                correlaciones,
+                serie_objetivo,
+            ),
+        ],
+        style={"marginBottom": "24px"},
+    )
+
+
+def register_report_callbacks(app):
+    @app.callback(
+        Output("report-variable-dropdown", "options"),
+        Output("report-variable-dropdown", "value"),
+        Input("variables-seleccionadas-store", "data"),
+        State("report-variable-dropdown", "value"),
+    )
+    def sincronizar_variables_reporte(variables_seleccionadas, valor_actual):
+        variables = list(variables_seleccionadas or [])
+        opciones = [
+            {"label": construir_etiqueta_columna(columna), "value": columna}
+            for columna in variables
+        ]
+        valores_validos = {opcion["value"] for opcion in opciones}
+        valor = valor_actual if valor_actual in valores_validos else None
+        return opciones, valor
+
+    @app.callback(
+        Output("report-container", "children", allow_duplicate=True),
+        Input("report-variable-dropdown", "value"),
+        State("filtros-store", "data"),
+        prevent_initial_call=True,
+    )
+    def actualizar_reporte(columna_reporte, filtros_guardados):
+        if not columna_reporte:
+            return []
+
+        mascara_global = construir_mascara_global("1h", list(filtros_guardados or []))
+        correlaciones, serie_objetivo = calcular_correlaciones_para_variable(
+            "1h",
+            columna_reporte,
+            mascara_global,
+        )
+        return [
+            construir_bloque_resultado(
+                correlaciones,
+                serie_objetivo,
+            )
+        ]

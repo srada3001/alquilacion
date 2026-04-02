@@ -77,7 +77,6 @@ def register_timeseries_callbacks(app):
             )
 
         fig.update_layout(
-            title="Evolucion temporal de variables seleccionadas",
             hovermode="x unified",
             xaxis=dict(rangeslider=dict(visible=True), type="date"),
             showlegend=True,
