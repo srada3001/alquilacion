@@ -21,9 +21,7 @@ RANDOM_STATE = 42
 
 def build_lag_steps():
     lags = set(range(0, 13))
-    lags.update(range(15, 73, 3))
-    lags.update(range(84, 289, 12))
-    lags.update(range(312, 577, 24))
+    lags.update(range(15, 144, 3))
     return sorted(lags)
 
 
@@ -32,13 +30,15 @@ LAG_STEPS = build_lag_steps()
 
 def is_derived_column(column):
     lowered = column.lower()
-    return lowered.endswith("-kalman") or lowered.endswith("-desviacion")
+    return lowered.endswith("-kalman") or lowered.endswith("-prefiltrada")
 
 
 def base_sensor_name(column):
     sensor = column.split("|")[-1].strip()
+    sensor = sensor.removesuffix("-Kalman")
     sensor = sensor.removesuffix("-kalman")
-    sensor = sensor.removesuffix("-desviacion")
+    sensor = sensor.removesuffix("-Prefiltrada")
+    sensor = sensor.removesuffix("-prefiltrada")
     return sensor
 
 

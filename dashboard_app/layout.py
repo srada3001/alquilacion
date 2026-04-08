@@ -24,6 +24,25 @@ FILTROS_STYLE = {
     "marginBottom": "16px",
 }
 
+MODO_DATOS_STYLE = {
+    "marginBottom": "16px",
+}
+
+FILTROS_FECHA_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0, 1fr) minmax(0, 1fr) auto",
+    "gap": "12px",
+    "alignItems": "center",
+    "marginBottom": "16px",
+}
+
+FILTRO_FECHA_CAMPO_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(0, 1fr) 120px",
+    "gap": "8px",
+    "alignItems": "center",
+}
+
 
 ANALISIS_SECTIONS_STYLE = {
     "display": "grid",
@@ -31,6 +50,10 @@ ANALISIS_SECTIONS_STYLE = {
     "gap": "24px",
     "alignItems": "start",
 }
+
+
+def construir_boton_agregar(button_id):
+    return html.Button("+", id=button_id, n_clicks=0, style=ACCION_AGREGAR_STYLE)
 
 
 def build_layout(fases):
@@ -51,16 +74,32 @@ def build_layout(fases):
                         value=None,
                         placeholder="Seleccionar variables",
                     ),
-                    html.Button("+", id="anadir-variable-btn", n_clicks=0, style=ACCION_AGREGAR_STYLE),
+                    construir_boton_agregar("anadir-variable-btn"),
                 ],
                 style=SELECTORES_STYLE,
             ),
             dcc.Store(id="variables-seleccionadas-store", data=[]),
             html.Div(id="variables-seleccionadas-container"),
+            html.Div(
+                [
+                    html.Div("Datos a usar", style={"fontWeight": "600", "marginBottom": "8px"}),
+                    dcc.RadioItems(
+                        id="modo-datos-radio",
+                        options=[
+                            {"label": "Toda la data", "value": "todo"},
+                            {"label": "Solo paradas", "value": "paradas"},
+                            {"label": "Solo operacion", "value": "operacion"},
+                        ],
+                        value="todo",
+                        inline=True,
+                    ),
+                ],
+                style=MODO_DATOS_STYLE,
+            ),
             html.Details(
                 [
                     html.Summary(
-                        "Filtros",
+                        "Filtros por variable",
                         style={"cursor": "pointer", "fontWeight": "600"},
                     ),
                     html.Div(
@@ -86,11 +125,63 @@ def build_layout(fases):
                         ],
                         style=FILTROS_STYLE,
                     ),
-                    html.Div(id="filtros-container"),
-                    html.Div(id="filtros-resumen"),
                 ],
                 style={"marginBottom": "16px"},
             ),
+            html.Div(id="filtros-variable-container"),
+            html.Details(
+                [
+                    html.Summary(
+                        "Filtros por fecha",
+                        style={"cursor": "pointer", "fontWeight": "600"},
+                    ),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    dcc.DatePickerSingle(
+                                        id="filtro-fecha-inicio-input",
+                                        date=None,
+                                        display_format="YYYY-MM-DD",
+                                        placeholder="Fecha inicio",
+                                        clearable=True,
+                                    ),
+                                    dcc.Input(
+                                        id="filtro-hora-inicio-input",
+                                        type="text",
+                                        value="00:00",
+                                        placeholder="HH:MM",
+                                    ),
+                                ],
+                                style=FILTRO_FECHA_CAMPO_STYLE,
+                            ),
+                            html.Div(
+                                [
+                                    dcc.DatePickerSingle(
+                                        id="filtro-fecha-fin-input",
+                                        date=None,
+                                        display_format="YYYY-MM-DD",
+                                        placeholder="Fecha fin",
+                                        clearable=True,
+                                    ),
+                                    dcc.Input(
+                                        id="filtro-hora-fin-input",
+                                        type="text",
+                                        value="23:59",
+                                        placeholder="HH:MM",
+                                    ),
+                                ],
+                                style=FILTRO_FECHA_CAMPO_STYLE,
+                            ),
+                            construir_boton_agregar("anadir-filtro-fecha-btn"),
+                        ],
+                        style=FILTROS_FECHA_STYLE,
+                    ),
+                ],
+                style={"marginBottom": "16px"},
+            ),
+            html.Div(id="filtros-fecha-container"),
+            html.Div(id="filtros-resumen"),
             dcc.Store(id="estado-grafico-store", data={"freq": "1h", "range": None}),
             html.H1("Evolucion temporal", style=TITULO_CENTRADO_STYLE),
             html.Div(
@@ -103,7 +194,7 @@ def build_layout(fases):
                 ],
                 style={"marginBottom": "12px"},
             ),
-            dcc.Store(id="filtros-store", data=[]),
+            dcc.Store(id="filtros-store", data={"variables": [], "fechas": []}),
             dcc.Graph(id="grafico"),
             html.Div(
                 [
@@ -132,7 +223,7 @@ def build_layout(fases):
                                 placeholder="Seleccionar analisis profundo precomputado",
                             ),
                             html.Div(
-                                "Disponible solo para variables precomputadas y sin filtros activos.",
+                                "Disponible solo para variables precomputadas, sin filtros activos y usando toda la data.",
                                 style={"marginBottom": "12px"},
                             ),
                             html.Div(id="deep-analysis-container"),

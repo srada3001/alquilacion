@@ -3,6 +3,7 @@ import plotly.graph_objects as go
 
 from dashboard_app.callbacks.common import (
     cargar_dataset_para_columnas,
+    construir_mascara_modo_datos,
     construir_etiqueta_columna,
     normalizar_serie,
     obtener_freq_desde_estado_grafico,
@@ -10,7 +11,10 @@ from dashboard_app.callbacks.common import (
     obtener_rango_desde_estado_grafico,
     obtener_rango_desde_relayout,
 )
+from dashboard_app.domain.filters import combinar_mascaras
 from dashboard_app.domain.filters import construir_mascara_desde_df
+from dashboard_app.domain.filters import obtener_filtros_variable
+from dashboard_app.domain.filters import normalizar_filtros_guardados
 
 
 def register_timeseries_callbacks(app):
@@ -43,20 +47,32 @@ def register_timeseries_callbacks(app):
         Input("normalizar-checklist", "value"),
         Input("variables-seleccionadas-store", "data"),
         Input("filtros-store", "data"),
+        Input("modo-datos-radio", "value"),
     )
-    def actualizar_grafico(estado_grafico, normalizar_opciones, variables_seleccionadas, filtros_guardados):
+    def actualizar_grafico(
+        estado_grafico,
+        normalizar_opciones,
+        variables_seleccionadas,
+        filtros_guardados,
+        modo_datos,
+    ):
         rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
         columnas = list(variables_seleccionadas or [])
         if not columnas:
             return go.Figure()
 
-        filtros_guardados = list(filtros_guardados or [])
+        filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
         columnas_requeridas = columnas + [
-            filtro["columna"] for filtro in filtros_guardados if filtro.get("columna")
+            filtro["columna"]
+            for filtro in obtener_filtros_variable(filtros_guardados)
+            if filtro.get("columna")
         ]
         freq = obtener_freq_desde_estado_grafico(estado_grafico)
         df_combinado = cargar_dataset_para_columnas(freq, columnas_requeridas)
-        mascara = construir_mascara_desde_df(df_combinado, filtros_guardados)
+        mascara = combinar_mascaras(
+            construir_mascara_desde_df(df_combinado, filtros_guardados),
+            construir_mascara_modo_datos(df_combinado, modo_datos, freq),
+        )
         df_grafico = df_combinado.where(mascara) if mascara is not None else df_combinado
 
         normalizar = "normalizar" in (normalizar_opciones or [])

@@ -8,10 +8,25 @@ from config import ANALYSIS_DATA_FOLDER, DATA_PATH
 
 
 PRECOMPUTED_ANALYSIS_COLUMNS = {
+    "horno | AI-1512A",
+    "reactor_de_alquilacion | AI-1050",
+    "reactor_de_alquilacion | AI-1912",
+    "regenerador_de_acido | AI-1193",
     "tratadores_e_intercambiadores_de_butano | AI-1224A",
-    "tratadores_e_intercambiadores_de_butano | AI-1224A-kalman",
     "tratadores_e_intercambiadores_de_butano | AI-1224B",
-    "tratadores_e_intercambiadores_de_butano | AI-1224B-kalman",
+    "tratadores_e_intercambiadores_de_butano | AI-1224C",
+    "tratamiento_de_efluentes | AI-1193",
+    "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
+    "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
+    # Seleccion anterior, se deja comentada por ahora:
+    # "lab_R-202 | EFLUENTE DE R-202 1,3-BUTADIENO",
+    # "lab_R-202 | Relacion 2C-4=/1C-4=",
+    # "variables_derivadas | lab_R-202 | Relacion 2C-4=/1C-4=-Prefiltrada",
+    # "lab_isobutano_reciclo | Relacion 1 Ol/iso",
+    # "variables_derivadas | lab_isobutano_reciclo | Relacion 1 Ol/iso-Prefiltrada",
+    # "lab_isobutano_reciclo | Relacion 2 Ol/iso",
+    # "variables_derivadas | lab_isobutano_reciclo | Relacion 2 Ol/iso-Prefiltrada",
+    # "lab_carga_D03_a_E28 | BUTILENOS",
 }
 
 

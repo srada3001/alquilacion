@@ -38,14 +38,20 @@ def register_report_callbacks(app):
     @app.callback(
         Output("report-container", "children", allow_duplicate=True),
         Input("report-variable-dropdown", "value"),
-        State("filtros-store", "data"),
+        Input("filtros-store", "data"),
+        Input("modo-datos-radio", "value"),
         prevent_initial_call=True,
     )
-    def actualizar_reporte(columna_reporte, filtros_guardados):
+    def actualizar_reporte(columna_reporte, filtros_guardados, modo_datos):
         if not columna_reporte:
             return []
 
-        mascara_global = construir_mascara_global("1h", list(filtros_guardados or []))
+        mascara_global = construir_mascara_global(
+            "1h",
+            filtros_guardados,
+            modo_datos=modo_datos,
+            columnas_base=[columna_reporte],
+        )
         correlaciones, serie_objetivo = calcular_correlaciones_para_variable(
             "1h",
             columna_reporte,

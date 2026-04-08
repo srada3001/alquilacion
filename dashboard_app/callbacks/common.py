@@ -1,4 +1,5 @@
 import pandas as pd
+from functools import lru_cache
 
 from data_processing.analysis_dataset import load_combined_dataset
 from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
@@ -61,6 +62,22 @@ GRUPOS_VARIABLES = {
     "PI": "Presiones",
     "TI": "Temperaturas",
 }
+
+VENTANAS_PARADA = (
+    ("2017-06-12 18:50", "2017-06-14 12:15"),
+    ("2017-06-17 16:10", "2017-07-19 15:10"),
+    ("2020-10-01 10:00", "2020-10-11 23:00"),
+    ("2021-02-16 11:20", "2021-02-27 23:55"),
+    ("2021-03-26 12:00", "2021-05-14 16:45"),
+    ("2021-08-19 18:00", "2021-08-20 23:30"),
+    ("2021-08-21 10:05", "2021-08-22 11:05"),
+    ("2023-03-09 23:10", "2023-03-12 15:10"),
+    ("2024-08-03 06:20", "2024-08-08 16:25"),
+    ("2024-08-17 06:25", "2024-08-19 17:25"),
+    ("2025-02-15 08:50", "2025-02-19 03:30"),
+    ("2025-09-24 08:55", "2025-09-25 12:00"),
+    ("2025-11-05 16:55", "2025-11-08 15:45"),
+)
 
 
 def normalizar_serie(serie):
@@ -182,8 +199,34 @@ def obtener_rango_desde_estado_grafico(estado_grafico):
     return estado_grafico.get("range")
 
 
-def cargar_dataset_para_columnas(freq, columnas_requeridas):
+def cargar_dataset_para_columnas(freq, columnas_requeridas, cargar_todo_si_vacio=False):
     columnas = list(dict.fromkeys(columnas_requeridas or []))
     if not columnas:
+        if cargar_todo_si_vacio:
+            return load_combined_dataset(freq)
         return pd.DataFrame()
     return load_combined_dataset(freq, columns=columnas)
+
+
+@lru_cache(maxsize=2)
+def get_shutdown_mask(freq):
+    df = load_combined_dataset(freq)
+    mask = pd.Series(False, index=df.index)
+    for inicio, fin in VENTANAS_PARADA:
+        inicio_ts = pd.Timestamp(inicio)
+        fin_ts = pd.Timestamp(fin)
+        mask |= (df.index >= inicio_ts) & (df.index <= fin_ts)
+    return mask
+
+
+def construir_mascara_modo_datos(df, modo_datos, freq):
+    if df.empty or modo_datos == "todo":
+        return None
+
+    shutdown_mask = get_shutdown_mask(freq)
+    shutdown_mask = shutdown_mask.reindex(df.index, fill_value=False)
+    if modo_datos == "paradas":
+        return shutdown_mask
+    if modo_datos == "operacion":
+        return ~shutdown_mask
+    return None
