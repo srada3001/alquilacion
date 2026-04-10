@@ -1,5 +1,6 @@
-import pandas as pd
 from functools import lru_cache
+
+import pandas as pd
 
 from data_processing.analysis_dataset import load_combined_dataset
 from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
@@ -63,22 +64,60 @@ GRUPOS_VARIABLES = {
     "TI": "Temperaturas",
 }
 
-VENTANAS_PARADA = (
-    ("2017-06-12 18:50", "2017-06-14 12:15"),
-    ("2017-06-17 16:10", "2017-07-19 15:10"),
-    ("2020-10-01 10:00", "2020-10-11 23:00"),
-    ("2021-02-16 11:20", "2021-02-27 23:55"),
-    ("2021-03-26 12:00", "2021-05-14 16:45"),
-    ("2021-08-19 18:00", "2021-08-20 23:30"),
-    ("2021-08-21 10:05", "2021-08-22 11:05"),
-    ("2023-03-09 23:10", "2023-03-12 15:10"),
-    ("2024-08-03 06:20", "2024-08-08 16:25"),
-    ("2024-08-17 06:25", "2024-08-19 17:25"),
-    ("2025-02-15 08:50", "2025-02-19 03:30"),
-    ("2025-09-24 08:55", "2025-09-25 12:00"),
-    ("2025-11-05 16:55", "2025-11-08 15:45"),
-)
+MODO_OPERACION_OPCIONES = [
+    {"label": "Toda la data", "value": "toda"},
+    {"label": "Operacion normal", "value": "normal"},
+]
 
+EVENTOS_OPERACION = [
+    ("2017-05-16 18:00", "2017-05-17 00:00", "2017-05-29 17:00", "2017-06-04 22:10"),
+    ("2017-06-06 14:00", "2017-06-08 00:00", "2017-07-19 12:00", "2017-07-24 02:00"),
+    ("2017-08-18 02:00", "2017-08-18 07:00", "2017-08-21 15:00", "2017-08-22 19:00"),
+    ("2017-10-04 12:00", "2017-10-04 22:00", "2017-10-05 17:00", "2017-10-06 18:00"),
+    ("2017-10-30 17:00", "2017-10-31 14:00", "2017-10-31 16:00", "2017-11-04 00:00"),
+    ("2018-03-27 08:00", "2018-03-27 09:00", "2018-03-27 09:15", "2018-03-27 18:00"),
+    ("2018-03-28 09:40", "2018-03-28 10:50", "2018-03-28 11:30", "2018-03-29 00:00"),
+    ("2018-03-30 03:45", "2018-03-30 05:20", "2018-03-30 06:00", "2018-03-30 18:00"),
+    ("2018-04-08 00:20", "2018-04-09 14:00", "2018-04-10 14:55", "2018-04-12 23:50"),
+    ("2018-05-10 11:40", "2018-05-11 20:00", "2018-05-11 16:00", "2018-05-13 08:00"),
+    ("2018-09-19 20:00", "2018-09-20 14:00", "2018-09-21 00:00", "2018-09-21 06:35"),
+    ("2018-12-01 04:10", "2018-12-02 06:00", "2018-12-03 11:00", "2018-12-04 06:00"),
+    ("2018-12-27 00:00", "2018-12-27 10:10", "2018-12-29 00:00", "2018-12-30 12:00"),
+    ("2019-06-03 12:00", "2019-06-04 06:00", "2019-06-07 09:00", "2019-06-08 19:05"),
+    ("2019-08-17 09:15", "2019-08-18 04:20", "2019-08-20 18:00", "2019-08-22 20:00"),
+    ("2019-09-02 10:10", "2019-09-03 12:00", "2019-10-04 00:00", "2019-10-05 12:00"),
+    ("2020-03-05 10:00", "2020-03-05 12:00", "2020-03-05 20:50", "2020-03-06 02:00"),
+    ("2020-07-02 00:00", "2020-07-02 03:00", "2020-07-02 07:00", "2020-07-02 23:00"),
+    ("2020-09-26 06:00", "2020-09-27 16:00", "2020-10-13 09:00", "2020-10-16 00:00"),
+    ("2020-11-18 09:45", "2020-11-19 00:00", "2020-11-21 07:55", "2020-11-21 20:00"),
+    ("2021-02-14 00:00", "2021-02-14 15:00", "2021-05-23 14:30", "2021-06-13 00:00"),
+    ("2021-06-13 17:20", "2021-06-13 17:50", "2021-06-13 18:45", "2021-06-17 00:00"),
+    ("2021-06-26 02:00", "2021-06-26 03:15", "2021-06-26 14:00", "2021-06-27 00:00"),
+    ("2021-08-16 22:00", "2021-08-17 08:00", "2021-09-19 15:00", "2021-09-19 20:00"),
+    ("2021-10-01 02:40", "2021-10-01 03:05", "2021-10-01 15:00", "2021-10-01 23:00"),
+    ("2021-10-03 09:45", "2021-10-03 11:05", "2021-10-05 11:00", "2021-10-06 07:40"),
+    ("2021-10-22 10:00", "2021-10-22 23:59", "2021-10-23 01:00", "2021-10-23 09:45"),
+    ("2021-11-29 06:00", "2021-12-01 11:05", "2021-12-03 11:00", "2021-12-04 09:30"),
+    ("2021-12-26 13:35", "2021-12-26 15:50", "2021-12-31 07:45", "2021-12-31 19:00"),
+    ("2022-01-03 17:00", "2022-01-04 15:15", "2022-01-06 09:50", "2022-01-08 04:00"),
+    ("2022-01-15 15:05", "2022-01-15 15:05", "2022-01-22 00:00", "2022-01-22 17:35"),
+    ("2022-04-03 06:35", "2022-04-03 07:25", "2022-04-03 19:15", "2022-04-06 16:20"),
+    ("2022-05-04 18:00", "2022-05-04 20:20", "2022-05-05 14:10", "2022-05-05 19:25"),
+    ("2022-10-14 10:20", "2022-10-14 11:20", "2022-10-16 03:15", "2022-10-16 19:00"),
+    ("2023-03-07 16:35", "2023-03-08 00:00", "2023-03-14 06:10", "2023-03-14 18:00"),
+    ("2024-07-29 11:35", "2024-07-29 16:25", "2024-08-11 05:20", "2024-08-11 18:20"),
+    ("2024-08-16 07:25", "2024-08-16 07:40", "2024-08-23 13:30", "2024-08-24 00:00"),
+    ("2024-10-05 10:00", "2024-10-05 20:10", "2024-10-06 21:20", "2024-10-07 06:00"),
+    ("2024-11-28 11:50", "2024-11-28 12:45", "2024-11-30 04:30", "2024-11-30 10:45"),
+    ("2025-02-01 21:55", "2025-02-01 22:40", "2025-02-04 17:40", "2025-02-05 06:00"),
+    ("2025-02-14 16:05", "2025-02-14 16:30", "2025-02-20 12:40", "2025-02-21 00:00"),
+    ("2025-03-16 12:45", "2025-03-16 13:45", "2025-03-17 05:00", "2025-03-17 18:00"),
+    ("2025-07-05 05:00", "2025-07-05 06:20", "2025-07-05 10:20", "2025-07-05 14:00"),
+    ("2025-09-23 11:00", "2025-09-23 14:45", "2025-09-30 20:25", "2025-10-01 18:00"),
+    ("2025-11-03 08:20", "2025-11-03 19:00", "2025-11-10 02:40", "2025-11-11 00:00"),
+    ("2025-11-29 07:20", "2025-11-29 08:05", "2025-11-30 05:00", "2025-11-30 12:15"),
+    ("2026-02-22 07:00", "2026-02-22 12:00", None, None),
+]
 
 def normalizar_serie(serie):
     rango = serie.max() - serie.min()
@@ -193,10 +232,145 @@ def obtener_freq_desde_estado_grafico(estado_grafico):
     return estado_grafico.get("freq", "1h")
 
 
+def obtener_freq_efectiva(estado_grafico, modo_operacion="toda", arranque_id=None, parada_id=None):
+    if arranque_id or parada_id:
+        return "5min"
+    if modo_operacion != "toda":
+        return "1h"
+    return obtener_freq_desde_estado_grafico(estado_grafico)
+
+
 def obtener_rango_desde_estado_grafico(estado_grafico):
     if not estado_grafico:
         return None
     return estado_grafico.get("range")
+
+
+def obtener_eventos_operacion():
+    eventos = []
+    for indice, (parada_inicio, parada_fin, arranque_inicio, arranque_fin) in enumerate(EVENTOS_OPERACION, start=1):
+        eventos.append(
+            {
+                "arranque_id": f"arranque-{indice:02d}",
+                "parada_id": f"parada-{indice:02d}",
+                "indice": indice,
+                "parada_inicio": pd.Timestamp(parada_inicio),
+                "parada_fin": pd.Timestamp(parada_fin),
+                "arranque_inicio": pd.Timestamp(arranque_inicio) if arranque_inicio else None,
+                "arranque_fin": pd.Timestamp(arranque_fin) if arranque_fin else None,
+            }
+        )
+    return eventos
+
+
+def formatear_timestamp_corto(valor):
+    if valor is None or pd.isna(valor):
+        return "-"
+    return pd.Timestamp(valor).strftime("%Y-%m-%d %H:%M")
+
+
+def construir_opciones_arranques():
+    opciones = []
+    for evento in obtener_eventos_operacion():
+        if evento["arranque_inicio"] is None or evento["arranque_fin"] is None:
+            continue
+        opciones.append(
+            {
+                "label": (
+                    f"Arranque {evento['indice']:02d}: "
+                    f"{formatear_timestamp_corto(evento['arranque_inicio'])} a "
+                    f"{formatear_timestamp_corto(evento['arranque_fin'])}"
+                ),
+                "value": evento["arranque_id"],
+            }
+        )
+    return opciones
+
+
+def construir_opciones_paradas():
+    opciones = []
+    for evento in obtener_eventos_operacion():
+        if evento["parada_inicio"] is None or evento["parada_fin"] is None:
+            continue
+        opciones.append(
+            {
+                "label": (
+                    f"Parada {evento['indice']:02d}: "
+                    f"{formatear_timestamp_corto(evento['parada_inicio'])} a "
+                    f"{formatear_timestamp_corto(evento['parada_fin'])}"
+                ),
+                "value": evento["parada_id"],
+            }
+        )
+    return opciones
+
+
+@lru_cache(maxsize=2)
+def get_operational_reference_index():
+    df_5min = load_combined_dataset("5min")
+    return df_5min.index
+
+
+@lru_cache(maxsize=1)
+def get_downtime_mask_5min():
+    indice_5min = get_operational_reference_index()
+    mask = pd.Series(False, index=indice_5min)
+    if mask.empty:
+        return mask
+
+    ultimo_timestamp = indice_5min.max()
+    for evento in obtener_eventos_operacion():
+        inicio = evento["parada_fin"]
+        fin = evento["arranque_inicio"] if evento["arranque_inicio"] is not None else ultimo_timestamp
+        if inicio is None or fin is None or fin <= inicio:
+            continue
+        mask |= (indice_5min >= inicio) & (indice_5min < fin)
+    return mask
+
+
+def construir_mascara_contexto_operacion(df, modo_operacion="toda", arranque_id=None, parada_id=None):
+    if df.empty:
+        return None
+
+    mascara = None
+
+    if modo_operacion == "normal":
+        downtime_mask = get_downtime_mask_5min().reindex(df.index, fill_value=False)
+        mascara = ~downtime_mask
+
+    if arranque_id:
+        evento = next(
+            (item for item in obtener_eventos_operacion() if item["arranque_id"] == arranque_id),
+            None,
+        )
+        if evento is None or evento["arranque_inicio"] is None or evento["arranque_fin"] is None:
+            arranque_mask = pd.Series(False, index=df.index)
+        else:
+            indice_5min = get_operational_reference_index()
+            arranque_mask_5min = pd.Series(
+                (indice_5min >= evento["arranque_inicio"]) & (indice_5min <= evento["arranque_fin"]),
+                index=indice_5min,
+            )
+            arranque_mask = arranque_mask_5min.reindex(df.index, fill_value=False)
+        mascara = arranque_mask if mascara is None else (mascara & arranque_mask)
+
+    if parada_id:
+        evento = next(
+            (item for item in obtener_eventos_operacion() if item["parada_id"] == parada_id),
+            None,
+        )
+        if evento is None or evento["parada_inicio"] is None or evento["parada_fin"] is None:
+            parada_mask = pd.Series(False, index=df.index)
+        else:
+            indice_5min = get_operational_reference_index()
+            parada_mask_5min = pd.Series(
+                (indice_5min >= evento["parada_inicio"]) & (indice_5min <= evento["parada_fin"]),
+                index=indice_5min,
+            )
+            parada_mask = parada_mask_5min.reindex(df.index, fill_value=False)
+        mascara = parada_mask if mascara is None else (mascara & parada_mask)
+
+    return mascara
 
 
 def cargar_dataset_para_columnas(freq, columnas_requeridas, cargar_todo_si_vacio=False):
@@ -206,27 +380,3 @@ def cargar_dataset_para_columnas(freq, columnas_requeridas, cargar_todo_si_vacio
             return load_combined_dataset(freq)
         return pd.DataFrame()
     return load_combined_dataset(freq, columns=columnas)
-
-
-@lru_cache(maxsize=2)
-def get_shutdown_mask(freq):
-    df = load_combined_dataset(freq)
-    mask = pd.Series(False, index=df.index)
-    for inicio, fin in VENTANAS_PARADA:
-        inicio_ts = pd.Timestamp(inicio)
-        fin_ts = pd.Timestamp(fin)
-        mask |= (df.index >= inicio_ts) & (df.index <= fin_ts)
-    return mask
-
-
-def construir_mascara_modo_datos(df, modo_datos, freq):
-    if df.empty or modo_datos == "todo":
-        return None
-
-    shutdown_mask = get_shutdown_mask(freq)
-    shutdown_mask = shutdown_mask.reindex(df.index, fill_value=False)
-    if modo_datos == "paradas":
-        return shutdown_mask
-    if modo_datos == "operacion":
-        return ~shutdown_mask
-    return None

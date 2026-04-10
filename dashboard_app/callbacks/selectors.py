@@ -8,7 +8,7 @@ from dashboard_app.callbacks.common import (
     construir_opciones_variables_por_fase,
     expandir_valor_variable,
     normalizar_lista_unica,
-    obtener_freq_desde_estado_grafico,
+    obtener_freq_efectiva,
 )
 
 
@@ -32,11 +32,14 @@ def register_selectors_callbacks(app):
         Output("seleccion-variables-dropdown", "options"),
         Output("seleccion-variables-dropdown", "value"),
         Input("estado-grafico-store", "data"),
+        Input("modo-operacion-radio", "value"),
+        Input("filtro-arranque-dropdown", "value"),
+        Input("filtro-parada-dropdown", "value"),
         Input("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
     )
-    def actualizar_variables_selector(estado_grafico, fase, valor_actual):
-        freq = obtener_freq_desde_estado_grafico(estado_grafico)
+    def actualizar_variables_selector(estado_grafico, modo_operacion, arranque_id, parada_id, fase, valor_actual):
+        freq = obtener_freq_efectiva(estado_grafico, modo_operacion, arranque_id, parada_id)
         opciones = construir_opciones_variables_por_fase(freq, fase, incluir_grupos=True)
         valores_validos = {opcion["value"] for opcion in opciones}
         return opciones, valor_actual if valor_actual in valores_validos else None
@@ -46,15 +49,28 @@ def register_selectors_callbacks(app):
         Input("anadir-variable-btn", "n_clicks"),
         Input({"type": "retirar-variable-btn", "value": ALL}, "n_clicks"),
         State("estado-grafico-store", "data"),
+        State("modo-operacion-radio", "value"),
+        State("filtro-arranque-dropdown", "value"),
+        State("filtro-parada-dropdown", "value"),
         State("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
         State("variables-seleccionadas-store", "data"),
         prevent_initial_call=True,
     )
-    def actualizar_variables_agregadas(_, __, estado_grafico, fase, valor_variable, variables_agregadas):
+    def actualizar_variables_agregadas(
+        _,
+        __,
+        estado_grafico,
+        modo_operacion,
+        arranque_id,
+        parada_id,
+        fase,
+        valor_variable,
+        variables_agregadas,
+    ):
         variables_agregadas = list(variables_agregadas or [])
         disparador = callback_context.triggered_id
-        freq = obtener_freq_desde_estado_grafico(estado_grafico)
+        freq = obtener_freq_efectiva(estado_grafico, modo_operacion, arranque_id, parada_id)
 
         if disparador == "anadir-variable-btn":
             nuevas = expandir_valor_variable(freq, fase, valor_variable)

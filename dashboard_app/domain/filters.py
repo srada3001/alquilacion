@@ -1,8 +1,20 @@
 import pandas as pd
 
 
+def _asegurar_serie_booleana(mascara):
+    if mascara is None:
+        return None
+    if isinstance(mascara, pd.Series):
+        return mascara.fillna(False).astype(bool)
+    return pd.Series(mascara, dtype=bool)
+
+
 def combinar_mascaras(*mascaras):
-    mascaras_validas = [mascara for mascara in mascaras if mascara is not None]
+    mascaras_validas = [
+        _asegurar_serie_booleana(mascara)
+        for mascara in mascaras
+        if mascara is not None
+    ]
     if not mascaras_validas:
         return None
 

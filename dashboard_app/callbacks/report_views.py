@@ -2,6 +2,8 @@ from dash import html
 
 from dashboard_app.callbacks.common import construir_etiqueta_columna
 from dashboard_app.domain.report import (
+    construir_bloque_dispersiones,
+    construir_boxplot_relaciones,
     construir_histograma,
     construir_tabla_correlacion,
     construir_tabla_describe,
@@ -22,6 +24,7 @@ CORRELACIONES_EXPANDIDAS_STYLE = {
 def construir_bloque_reporte(
     correlaciones,
     serie_objetivo,
+    df_numerico,
 ):
     return html.Div(
         [
@@ -41,8 +44,32 @@ def construir_bloque_reporte(
                     ),
                     html.Div(
                         [
+                            html.H2("Boxplot comparativo"),
+                            construir_boxplot_relaciones(
+                                df_numerico,
+                                serie_objetivo.name,
+                                correlaciones,
+                                construir_etiqueta_columna,
+                            ),
+                        ],
+                        style=CORRELACIONES_EXPANDIDAS_STYLE,
+                    ),
+                    html.Div(
+                        [
                             html.H2("Correlaciones lineales"),
                             construir_tabla_correlacion(correlaciones, construir_etiqueta_columna),
+                        ],
+                        style=CORRELACIONES_EXPANDIDAS_STYLE,
+                    ),
+                    html.Div(
+                        [
+                            html.H2("Relaciones principales"),
+                            construir_bloque_dispersiones(
+                                df_numerico,
+                                serie_objetivo.name,
+                                correlaciones,
+                                construir_etiqueta_columna,
+                            ),
                         ],
                         style=CORRELACIONES_EXPANDIDAS_STYLE,
                     ),

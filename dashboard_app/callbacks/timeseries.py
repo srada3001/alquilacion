@@ -3,10 +3,10 @@ import plotly.graph_objects as go
 
 from dashboard_app.callbacks.common import (
     cargar_dataset_para_columnas,
-    construir_mascara_modo_datos,
+    construir_mascara_contexto_operacion,
     construir_etiqueta_columna,
     normalizar_serie,
-    obtener_freq_desde_estado_grafico,
+    obtener_freq_efectiva,
     obtener_freq_desde_relayout,
     obtener_rango_desde_estado_grafico,
     obtener_rango_desde_relayout,
@@ -47,14 +47,18 @@ def register_timeseries_callbacks(app):
         Input("normalizar-checklist", "value"),
         Input("variables-seleccionadas-store", "data"),
         Input("filtros-store", "data"),
-        Input("modo-datos-radio", "value"),
+        Input("modo-operacion-radio", "value"),
+        Input("filtro-arranque-dropdown", "value"),
+        Input("filtro-parada-dropdown", "value"),
     )
     def actualizar_grafico(
         estado_grafico,
         normalizar_opciones,
         variables_seleccionadas,
         filtros_guardados,
-        modo_datos,
+        modo_operacion,
+        arranque_id,
+        parada_id,
     ):
         rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
         columnas = list(variables_seleccionadas or [])
@@ -67,13 +71,21 @@ def register_timeseries_callbacks(app):
             for filtro in obtener_filtros_variable(filtros_guardados)
             if filtro.get("columna")
         ]
-        freq = obtener_freq_desde_estado_grafico(estado_grafico)
-        df_combinado = cargar_dataset_para_columnas(freq, columnas_requeridas)
+        freq = obtener_freq_efectiva(estado_grafico, modo_operacion, arranque_id, parada_id)
+        df_combinado = cargar_dataset_para_columnas(
+            freq,
+            columnas_requeridas,
+            cargar_todo_si_vacio=modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
+        )
         mascara = combinar_mascaras(
             construir_mascara_desde_df(df_combinado, filtros_guardados),
-            construir_mascara_modo_datos(df_combinado, modo_datos, freq),
+            construir_mascara_contexto_operacion(df_combinado, modo_operacion, arranque_id, parada_id),
         )
-        df_grafico = df_combinado.where(mascara) if mascara is not None else df_combinado
+        if mascara is not None:
+            mascara = mascara.reindex(df_combinado.index, fill_value=False)
+            df_grafico = df_combinado.loc[mascara].copy()
+        else:
+            df_grafico = df_combinado
 
         normalizar = "normalizar" in (normalizar_opciones or [])
         fig = go.Figure()
@@ -94,10 +106,13 @@ def register_timeseries_callbacks(app):
 
         fig.update_layout(
             hovermode="x unified",
-            xaxis=dict(rangeslider=dict(visible=True), type="date"),
+            xaxis=dict(type="date"),
             showlegend=True,
-            uirevision="grafico-principal",
+            uirevision=(
+                f"grafico-principal::{modo_operacion}::"
+                f"{arranque_id or 'sin-arranque'}::{parada_id or 'sin-parada'}"
+            ),
         )
-        if rango_visible is not None:
+        if rango_visible is not None and modo_operacion == "toda" and not arranque_id and not parada_id:
             fig.update_layout(xaxis_range=rango_visible)
         return fig

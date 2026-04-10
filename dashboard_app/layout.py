@@ -2,7 +2,10 @@ from dash import dcc, html
 
 from dashboard_app.callbacks.common import (
     ACCION_AGREGAR_STYLE,
+    MODO_OPERACION_OPCIONES,
     TITULO_CENTRADO_STYLE,
+    construir_opciones_arranques,
+    construir_opciones_paradas,
 )
 from dashboard_app.data import formatear_nombre_fase
 from dashboard_app.repositories.analysis_cache import get_precomputed_analysis_columns
@@ -24,15 +27,19 @@ FILTROS_STYLE = {
     "marginBottom": "16px",
 }
 
-MODO_DATOS_STYLE = {
-    "marginBottom": "16px",
-}
-
 FILTROS_FECHA_STYLE = {
     "display": "grid",
     "gridTemplateColumns": "minmax(0, 1fr) minmax(0, 1fr) auto",
     "gap": "12px",
     "alignItems": "center",
+    "marginBottom": "16px",
+}
+
+CONTEXTO_OPERACION_STYLE = {
+    "display": "grid",
+    "gridTemplateColumns": "minmax(240px, auto) minmax(280px, 1fr) minmax(280px, 1fr)",
+    "gap": "12px",
+    "alignItems": "end",
     "marginBottom": "16px",
 }
 
@@ -82,19 +89,43 @@ def build_layout(fases):
             html.Div(id="variables-seleccionadas-container"),
             html.Div(
                 [
-                    html.Div("Datos a usar", style={"fontWeight": "600", "marginBottom": "8px"}),
-                    dcc.RadioItems(
-                        id="modo-datos-radio",
-                        options=[
-                            {"label": "Toda la data", "value": "todo"},
-                            {"label": "Solo paradas", "value": "paradas"},
-                            {"label": "Solo operacion", "value": "operacion"},
-                        ],
-                        value="todo",
-                        inline=True,
+                    html.Div(
+                        [
+                            html.Div("Modo de datos", style={"fontWeight": "600", "marginBottom": "8px"}),
+                            dcc.RadioItems(
+                                id="modo-operacion-radio",
+                                options=MODO_OPERACION_OPCIONES,
+                                value="toda",
+                                inline=True,
+                            ),
+                        ]
+                    ),
+                    html.Div(
+                        [
+                            html.Div("Filtro por arranque", style={"fontWeight": "600", "marginBottom": "8px"}),
+                            dcc.Dropdown(
+                                id="filtro-arranque-dropdown",
+                                options=construir_opciones_arranques(),
+                                value=None,
+                                placeholder="Seleccionar arranque",
+                                clearable=True,
+                            ),
+                        ]
+                    ),
+                    html.Div(
+                        [
+                            html.Div("Filtro por parada", style={"fontWeight": "600", "marginBottom": "8px"}),
+                            dcc.Dropdown(
+                                id="filtro-parada-dropdown",
+                                options=construir_opciones_paradas(),
+                                value=None,
+                                placeholder="Seleccionar parada",
+                                clearable=True,
+                            ),
+                        ]
                     ),
                 ],
-                style=MODO_DATOS_STYLE,
+                style=CONTEXTO_OPERACION_STYLE,
             ),
             html.Details(
                 [

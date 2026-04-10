@@ -5,9 +5,11 @@ from dashboard_app.callbacks.common import (
     BADGE_CONTAINER_STYLE,
     BADGE_STYLE,
     cargar_dataset_para_columnas,
-    construir_mascara_modo_datos,
+    construir_mascara_contexto_operacion,
     construir_etiqueta_columna,
-    obtener_freq_desde_estado_grafico,
+    formatear_timestamp_corto,
+    obtener_eventos_operacion,
+    obtener_freq_efectiva,
 )
 from dashboard_app.domain.filters import (
     combinar_mascaras,
@@ -66,7 +68,56 @@ def construir_chip_filtro_fecha(filtro):
     )
 
 
-def construir_mascara_global(freq, filtros, modo_datos="todo", columnas_base=None):
+def construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id):
+    chips = []
+    if modo_operacion == "normal":
+        chips.append(html.Div([html.Span("Modo: Operacion normal")], style=BADGE_STYLE))
+
+    if arranque_id:
+        evento = next((item for item in obtener_eventos_operacion() if item["arranque_id"] == arranque_id), None)
+        if evento is not None and evento["arranque_inicio"] is not None and evento["arranque_fin"] is not None:
+            chips.append(
+                html.Div(
+                    [
+                        html.Span(
+                            f"Arranque {evento['indice']:02d}: "
+                            f"{formatear_timestamp_corto(evento['arranque_inicio'])} a "
+                            f"{formatear_timestamp_corto(evento['arranque_fin'])}"
+                        )
+                    ],
+                    style=BADGE_STYLE,
+                )
+            )
+
+    if parada_id:
+        evento = next((item for item in obtener_eventos_operacion() if item["parada_id"] == parada_id), None)
+        if evento is not None and evento["parada_inicio"] is not None and evento["parada_fin"] is not None:
+            chips.append(
+                html.Div(
+                    [
+                        html.Span(
+                            f"Parada {evento['indice']:02d}: "
+                            f"{formatear_timestamp_corto(evento['parada_inicio'])} a "
+                            f"{formatear_timestamp_corto(evento['parada_fin'])}"
+                        )
+                    ],
+                    style=BADGE_STYLE,
+                )
+            )
+
+    if not chips:
+        return html.Div("Contexto operacional: toda la data.")
+    return html.Div(chips, style=BADGE_CONTAINER_STYLE)
+
+
+def construir_mascara_global(
+    freq,
+    filtros,
+    columnas_base=None,
+    modo_operacion="toda",
+    arranque_id=None,
+    parada_id=None,
+):
     filtros_normalizados = normalizar_filtros_guardados(filtros)
     filtros_fecha = obtener_filtros_fecha(filtros_normalizados)
     columnas_filtro = [
@@ -75,17 +126,17 @@ def construir_mascara_global(freq, filtros, modo_datos="todo", columnas_base=Non
         if filtro.get("columna")
     ]
     columnas_requeridas = list(columnas_base or []) + columnas_filtro
-    if not columnas_requeridas and not filtros_fecha and modo_datos == "todo":
+    if not columnas_requeridas and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id:
         return None
 
     df_filtros = cargar_dataset_para_columnas(
         freq,
         columnas_requeridas,
-        cargar_todo_si_vacio=bool(filtros_fecha) or modo_datos != "todo",
+        cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
     )
     return combinar_mascaras(
         construir_mascara_desde_df(df_filtros, filtros_normalizados),
-        construir_mascara_modo_datos(df_filtros, modo_datos, freq),
+        construir_mascara_contexto_operacion(df_filtros, modo_operacion, arranque_id, parada_id),
     )
 
 
@@ -144,7 +195,6 @@ def register_filters_callbacks(app):
     ):
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
         disparador = callback_context.triggered_id
-        _ = obtener_freq_desde_estado_grafico(estado_grafico)
         filtros_variable = list(obtener_filtros_variable(filtros_guardados))
         filtros_fecha = list(obtener_filtros_fecha(filtros_guardados))
         siguiente_id = max(
@@ -218,9 +268,18 @@ def register_filters_callbacks(app):
         Input("estado-grafico-store", "data"),
         Input("filtros-store", "data"),
         Input("variables-seleccionadas-store", "data"),
-        Input("modo-datos-radio", "value"),
+        Input("modo-operacion-radio", "value"),
+        Input("filtro-arranque-dropdown", "value"),
+        Input("filtro-parada-dropdown", "value"),
     )
-    def mostrar_filtros(estado_grafico, filtros_guardados, variables_seleccionadas, modo_datos):
+    def mostrar_filtros(
+        estado_grafico,
+        filtros_guardados,
+        variables_seleccionadas,
+        modo_operacion,
+        arranque_id,
+        parada_id,
+    ):
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
         filtros_variable = obtener_filtros_variable(filtros_guardados)
         filtros_fecha = obtener_filtros_fecha(filtros_guardados)
@@ -241,32 +300,43 @@ def register_filters_callbacks(app):
         else:
             chips_fecha = html.Div("No hay filtros por fecha anadidos.")
 
-        freq = obtener_freq_desde_estado_grafico(estado_grafico)
+        freq = obtener_freq_efectiva(estado_grafico, modo_operacion, arranque_id, parada_id)
         columnas_requeridas = list(variables_seleccionadas or []) + [
             filtro["columna"] for filtro in filtros_variable if filtro.get("columna")
         ]
-        if not columnas_requeridas and not filtros_fecha and modo_datos == "todo":
+        chips_contexto = construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id)
+        if not columnas_requeridas and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id:
             return (
                 chips_variable,
                 chips_fecha,
-                html.Div("Muestras eliminadas: 0 (0.00% del dataframe total)."),
+                html.Div(
+                    [
+                        chips_contexto,
+                        html.Div("Muestras eliminadas: 0 (0.00% del dataframe total)."),
+                    ]
+                ),
             )
 
         df_combinado = cargar_dataset_para_columnas(
             freq,
             columnas_requeridas,
-            cargar_todo_si_vacio=bool(filtros_fecha) or modo_datos != "todo",
+            cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
         )
         total = len(df_combinado.index)
         mascara_total = combinar_mascaras(
             construir_mascara_desde_df(df_combinado, filtros_guardados),
-            construir_mascara_modo_datos(df_combinado, modo_datos, freq),
+            construir_mascara_contexto_operacion(df_combinado, modo_operacion, arranque_id, parada_id),
         )
         rechazo = ~mascara_total if mascara_total is not None else None
         eliminadas = int(rechazo.sum()) if rechazo is not None else 0
         porcentaje = (eliminadas / total * 100) if total else 0
 
         resumen = html.Div(
-            f"Muestras eliminadas: {eliminadas} ({porcentaje:.2f}% del dataframe total)."
+            [
+                chips_contexto,
+                html.Div(
+                    f"Muestras eliminadas: {eliminadas} ({porcentaje:.2f}% del dataframe total)."
+                ),
+            ]
         )
         return chips_variable, chips_fecha, resumen

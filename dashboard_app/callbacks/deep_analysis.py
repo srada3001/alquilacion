@@ -255,15 +255,23 @@ def register_deep_analysis_callbacks(app):
         Output("deep-analysis-container", "children", allow_duplicate=True),
         Input("deep-analysis-dropdown", "value"),
         Input("filtros-store", "data"),
-        Input("modo-datos-radio", "value"),
+        Input("modo-operacion-radio", "value"),
+        Input("filtro-arranque-dropdown", "value"),
+        Input("filtro-parada-dropdown", "value"),
         prevent_initial_call=True,
     )
-    def actualizar_analisis_profundo(columna_objetivo, filtros_guardados, modo_datos):
+    def actualizar_analisis_profundo(columna_objetivo, filtros_guardados, modo_operacion, arranque_id, parada_id):
         if not columna_objetivo:
             return []
 
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
-        if filtros_guardados["variables"] or filtros_guardados["fechas"] or modo_datos != "todo":
+        if (
+            filtros_guardados["variables"]
+            or filtros_guardados["fechas"]
+            or modo_operacion != "toda"
+            or arranque_id
+            or parada_id
+        ):
             return [
                 html.Div(
                     "El analisis profundo solo esta disponible sin filtros, usando toda la data, y para variables precomputadas."
