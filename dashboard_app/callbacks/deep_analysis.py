@@ -7,6 +7,7 @@ from dashboard_app.callbacks.common import (
     construir_etiqueta_columna,
 )
 from dashboard_app.repositories.analysis_cache import (
+    build_precomputed_analysis_context_key,
     get_precomputed_analysis_columns,
     load_precomputed_analysis_result,
 )
@@ -19,6 +20,10 @@ ANALISIS_PROFUNDO_STACK_STYLE = {
     "gap": "16px",
     "alignItems": "start",
 }
+
+ANALISIS_PROFUNDO_DISPONIBILIDAD_MENSAJE = (
+    "Solo disponible para operacion normal y arranques sin filtros extra."
+)
 
 VARIABLES_REFERENCIA_PAGINA_1 = [
     ("TI 2105", ["debutanizadora_y_tratamiento_de_alquilato | TI-2105"]),
@@ -250,6 +255,10 @@ def construir_bloque_resultado_profundo(influence_result):
     )
 
 
+def tiene_filtros_extra_analisis_profundo(filtros_guardados):
+    return bool(filtros_guardados["variables"] or filtros_guardados["fechas"])
+
+
 def register_deep_analysis_callbacks(app):
     @app.callback(
         Output("deep-analysis-container", "children", allow_duplicate=True),
@@ -265,18 +274,13 @@ def register_deep_analysis_callbacks(app):
             return []
 
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
-        if (
-            filtros_guardados["variables"]
-            or filtros_guardados["fechas"]
-            or modo_operacion != "toda"
-            or arranque_id
-            or parada_id
-        ):
-            return [
-                html.Div(
-                    "El analisis profundo solo esta disponible sin filtros, usando toda la data, y para variables precomputadas."
-                )
-            ]
+        context_key = build_precomputed_analysis_context_key(
+            modo_operacion=modo_operacion,
+            arranque_id=arranque_id,
+            parada_id=parada_id,
+        )
+        if context_key is None or tiene_filtros_extra_analisis_profundo(filtros_guardados):
+            return [html.Div(ANALISIS_PROFUNDO_DISPONIBILIDAD_MENSAJE)]
 
         if columna_objetivo not in get_precomputed_analysis_columns():
             return [
@@ -285,7 +289,7 @@ def register_deep_analysis_callbacks(app):
                 )
             ]
 
-        cached = load_precomputed_analysis_result(columna_objetivo)
+        cached = load_precomputed_analysis_result(columna_objetivo, context_key)
         if cached is None:
             return [
                 html.Div(
@@ -295,6 +299,6 @@ def register_deep_analysis_callbacks(app):
 
         return [
             construir_bloque_resultado_profundo(
-                cached["influence_result"],
+                cached,
             )
         ]

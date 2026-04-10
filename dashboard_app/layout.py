@@ -254,7 +254,7 @@ def build_layout(fases):
                                 placeholder="Seleccionar analisis profundo precomputado",
                             ),
                             html.Div(
-                                "Disponible solo para variables precomputadas, sin filtros activos y usando toda la data.",
+                                "Solo disponible para operacion normal y arranques sin filtros extra.",
                                 style={"marginBottom": "12px"},
                             ),
                             html.Div(id="deep-analysis-container"),

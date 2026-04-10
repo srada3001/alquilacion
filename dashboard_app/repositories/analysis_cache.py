@@ -5,6 +5,7 @@ from pathlib import Path
 import pandas as pd
 
 from config import ANALYSIS_DATA_FOLDER, DATA_PATH
+from dashboard_app.domain.operation_events import obtener_eventos_operacion
 
 
 PRECOMPUTED_ANALYSIS_COLUMNS = {
@@ -18,20 +19,13 @@ PRECOMPUTED_ANALYSIS_COLUMNS = {
     "tratamiento_de_efluentes | AI-1193",
     "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
     "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
-    # Seleccion anterior, se deja comentada por ahora:
-    # "lab_R-202 | EFLUENTE DE R-202 1,3-BUTADIENO",
-    # "lab_R-202 | Relacion 2C-4=/1C-4=",
-    # "variables_derivadas | lab_R-202 | Relacion 2C-4=/1C-4=-Prefiltrada",
-    # "lab_isobutano_reciclo | Relacion 1 Ol/iso",
-    # "variables_derivadas | lab_isobutano_reciclo | Relacion 1 Ol/iso-Prefiltrada",
-    # "lab_isobutano_reciclo | Relacion 2 Ol/iso",
-    # "variables_derivadas | lab_isobutano_reciclo | Relacion 2 Ol/iso-Prefiltrada",
-    # "lab_carga_D03_a_E28 | BUTILENOS",
 }
 
+PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL = "operacion_normal"
 
-def _sanitize_column_name(column_name):
-    sanitized = re.sub(r"[^a-zA-Z0-9]+", "_", column_name.strip().lower())
+
+def _sanitize_cache_key(value):
+    sanitized = re.sub(r"[^a-zA-Z0-9]+", "_", str(value).strip().lower())
     sanitized = re.sub(r"_+", "_", sanitized).strip("_")
     return sanitized or "analysis"
 
@@ -40,18 +34,69 @@ def get_analysis_cache_base_path():
     return Path(DATA_PATH) / ANALYSIS_DATA_FOLDER / "precomputed_analysis"
 
 
-def get_analysis_cache_path(column_name):
-    return get_analysis_cache_base_path() / _sanitize_column_name(column_name)
+def build_precomputed_analysis_context_key(
+    modo_operacion="toda",
+    arranque_id=None,
+    parada_id=None,
+):
+    if parada_id:
+        return None
+    if arranque_id:
+        return str(arranque_id)
+    if modo_operacion == "normal":
+        return PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL
+    return None
+
+
+def get_precomputed_analysis_contexts():
+    contextos = [
+        {
+            "key": PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL,
+            "label": "Operacion normal",
+            "modo_operacion": "normal",
+            "arranque_id": None,
+            "parada_id": None,
+        }
+    ]
+
+    for evento in obtener_eventos_operacion():
+        if evento["arranque_inicio"] is None or evento["arranque_fin"] is None:
+            continue
+        contextos.append(
+            {
+                "key": build_precomputed_analysis_context_key(
+                    arranque_id=evento["arranque_id"],
+                ),
+                "label": f"Arranque {evento['indice']:02d}",
+                "modo_operacion": "toda",
+                "arranque_id": evento["arranque_id"],
+                "parada_id": None,
+            }
+        )
+
+    return contextos
+
+
+def get_analysis_cache_path(column_name, context_key):
+    if not context_key:
+        raise ValueError("context_key es obligatorio para el analisis precomputado.")
+    return (
+        get_analysis_cache_base_path()
+        / _sanitize_cache_key(context_key)
+        / _sanitize_cache_key(column_name)
+    )
 
 
 def get_precomputed_analysis_columns():
     return sorted(PRECOMPUTED_ANALYSIS_COLUMNS)
 
 
-def has_precomputed_analysis_result(column_name):
+def has_precomputed_analysis_result(column_name, context_key):
     if column_name not in PRECOMPUTED_ANALYSIS_COLUMNS:
         return False
-    base_path = get_analysis_cache_path(column_name)
+    if not context_key:
+        return False
+    base_path = get_analysis_cache_path(column_name, context_key)
     return (
         (base_path / "metadata.json").exists()
         and (base_path / "summary.parquet").exists()
@@ -60,9 +105,10 @@ def has_precomputed_analysis_result(column_name):
 
 def save_precomputed_analysis_result(
     column_name,
+    context_key,
     influence_result,
 ):
-    base_path = get_analysis_cache_path(column_name)
+    base_path = get_analysis_cache_path(column_name, context_key)
     base_path.mkdir(parents=True, exist_ok=True)
 
     frames = {
@@ -77,6 +123,7 @@ def save_precomputed_analysis_result(
 
     metadata = {
         "column_name": column_name,
+        "context_key": context_key,
         "metrics": influence_result.get("metrics", {}),
     }
     (base_path / "metadata.json").write_text(
@@ -85,11 +132,13 @@ def save_precomputed_analysis_result(
     )
 
 
-def load_precomputed_analysis_result(column_name):
+def load_precomputed_analysis_result(column_name, context_key):
     if column_name not in PRECOMPUTED_ANALYSIS_COLUMNS:
         return None
+    if not context_key:
+        return None
 
-    base_path = get_analysis_cache_path(column_name)
+    base_path = get_analysis_cache_path(column_name, context_key)
     metadata_path = base_path / "metadata.json"
     if not metadata_path.exists():
         return None
@@ -105,12 +154,10 @@ def load_precomputed_analysis_result(column_name):
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
 
     return {
-        "influence_result": {
-            "summary": frames["summary"],
-            "screening": frames["screening"],
-            "mi": frames["mi"],
-            "te": frames["te"],
-            "rf": frames["rf"],
-            "metrics": metadata.get("metrics", {}),
-        },
+        "summary": frames["summary"],
+        "screening": frames["screening"],
+        "mi": frames["mi"],
+        "te": frames["te"],
+        "rf": frames["rf"],
+        "metrics": metadata.get("metrics", {}),
     }

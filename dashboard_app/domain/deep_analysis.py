@@ -401,6 +401,7 @@ def calcular_influencias_para_variable(df, columna_objetivo):
             "summary": pd.DataFrame(),
             "screening": pd.DataFrame(),
             "mi": pd.DataFrame(),
+            "te": pd.DataFrame(),
             "rf": pd.DataFrame(),
             "metrics": {},
         }
