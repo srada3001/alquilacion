@@ -78,3 +78,44 @@ def construir_bloque_reporte(
             ),
         ]
     )
+
+
+def construir_bloque_relaciones_personalizadas(
+    correlacion,
+    columna_objetivo,
+    df_numerico,
+):
+    if correlacion is None:
+        return html.Div("No hay suficientes datos para mostrar la relacion seleccionada.")
+
+    return html.Div(
+        [
+            html.Div(
+                [
+                    html.H2("Boxplot comparativo"),
+                    construir_boxplot_relaciones(
+                        df_numerico,
+                        columna_objetivo,
+                        correlacion,
+                        construir_etiqueta_columna,
+                        top_n=1,
+                    ),
+                ],
+                style=CORRELACIONES_EXPANDIDAS_STYLE,
+            ),
+            html.Div(
+                [
+                    html.H2("Relaciones seleccionadas"),
+                    construir_bloque_dispersiones(
+                        df_numerico,
+                        columna_objetivo,
+                        correlacion,
+                        construir_etiqueta_columna,
+                        top_n=1,
+                    ),
+                ],
+                style=CORRELACIONES_EXPANDIDAS_STYLE,
+            ),
+        ],
+        style=REPORTE_GRID_STYLE,
+    )

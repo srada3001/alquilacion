@@ -8,15 +8,17 @@ from config import ANALYSIS_DATA_FOLDER, DATA_PATH
 from dashboard_app.domain.operation_events import obtener_eventos_operacion
 
 
+PRECOMPUTED_ANALYSIS_VERSION = 2
+
 PRECOMPUTED_ANALYSIS_COLUMNS = {
-    "horno | AI-1512A",
-    "reactor_de_alquilacion | AI-1050",
-    "reactor_de_alquilacion | AI-1912",
-    "regenerador_de_acido | AI-1193",
+    # "horno | AI-1512A",
+    # "reactor_de_alquilacion | AI-1050",
+    # "reactor_de_alquilacion | AI-1912",
+    # "regenerador_de_acido | AI-1193",
     "tratadores_e_intercambiadores_de_butano | AI-1224A",
     "tratadores_e_intercambiadores_de_butano | AI-1224B",
-    "tratadores_e_intercambiadores_de_butano | AI-1224C",
-    "tratamiento_de_efluentes | AI-1193",
+    # "tratadores_e_intercambiadores_de_butano | AI-1224C",
+    # "tratamiento_de_efluentes | AI-1193",
     "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
     "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
 }
@@ -97,10 +99,17 @@ def has_precomputed_analysis_result(column_name, context_key):
     if not context_key:
         return False
     base_path = get_analysis_cache_path(column_name, context_key)
-    return (
-        (base_path / "metadata.json").exists()
-        and (base_path / "summary.parquet").exists()
-    )
+    metadata_path = base_path / "metadata.json"
+    summary_path = base_path / "summary.parquet"
+    if not metadata_path.exists() or not summary_path.exists():
+        return False
+
+    try:
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+
+    return metadata.get("version") == PRECOMPUTED_ANALYSIS_VERSION
 
 
 def save_precomputed_analysis_result(
@@ -122,6 +131,7 @@ def save_precomputed_analysis_result(
         frame.to_parquet(base_path / f"{name}.parquet", index=False)
 
     metadata = {
+        "version": PRECOMPUTED_ANALYSIS_VERSION,
         "column_name": column_name,
         "context_key": context_key,
         "metrics": influence_result.get("metrics", {}),
@@ -152,6 +162,8 @@ def load_precomputed_analysis_result(column_name, context_key):
         frames[name] = pd.read_parquet(frame_path) if frame_path.exists() else pd.DataFrame()
 
     metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if metadata.get("version") != PRECOMPUTED_ANALYSIS_VERSION:
+        return None
 
     return {
         "summary": frames["summary"],

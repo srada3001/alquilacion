@@ -1,5 +1,6 @@
 from dash import Input, Output, dcc, html
 import plotly.graph_objects as go
+import pandas as pd
 import re
 import unicodedata
 
@@ -64,6 +65,12 @@ def normalizar_texto(texto):
     return limpio
 
 
+def formatear_valor_metrica(valor):
+    if valor is None or pd.isna(valor):
+        return "-"
+    return f"{float(valor):.4f}"
+
+
 def resolver_fila_resumen(summary, candidatos):
     if summary is None or summary.empty:
         return None
@@ -118,11 +125,11 @@ def construir_tabla_variables_referencia(summary, variables, titulo):
                     html.Td(etiqueta),
                     html.Td(construir_etiqueta_columna(row.feature)),
                     html.Td(row.best_lag_label),
-                    html.Td(f"{row.pearson:.4f}"),
-                    html.Td(f"{getattr(row, 'mutual_information', 0.0) or 0.0:.4f}"),
-                    html.Td(f"{getattr(row, 'transfer_entropy', 0.0) or 0.0:.4f}"),
-                    html.Td(f"{getattr(row, 'importance_mean', 0.0) or 0.0:.4f}"),
-                    html.Td(f"{row.consensus_score:.4f}"),
+                    html.Td(formatear_valor_metrica(row.pearson)),
+                    html.Td(formatear_valor_metrica(getattr(row, "mutual_information", None))),
+                    html.Td(formatear_valor_metrica(getattr(row, "transfer_entropy", None))),
+                    html.Td(formatear_valor_metrica(getattr(row, "importance_mean", None))),
+                    html.Td(formatear_valor_metrica(row.consensus_score)),
                 ]
             )
         )
@@ -156,11 +163,11 @@ def construir_tabla_influencias(summary, etiquetar_columna, top_n=12):
                 [
                     html.Td(etiquetar_columna(row.feature)),
                     html.Td(row.best_lag_label),
-                    html.Td(f"{row.pearson:.4f}"),
-                    html.Td(f"{getattr(row, 'mutual_information', 0.0) or 0.0:.4f}"),
-                    html.Td(f"{getattr(row, 'transfer_entropy', 0.0) or 0.0:.4f}"),
-                    html.Td(f"{getattr(row, 'importance_mean', 0.0) or 0.0:.4f}"),
-                    html.Td(f"{row.consensus_score:.4f}"),
+                    html.Td(formatear_valor_metrica(row.pearson)),
+                    html.Td(formatear_valor_metrica(getattr(row, "mutual_information", None))),
+                    html.Td(formatear_valor_metrica(getattr(row, "transfer_entropy", None))),
+                    html.Td(formatear_valor_metrica(getattr(row, "importance_mean", None))),
+                    html.Td(formatear_valor_metrica(row.consensus_score)),
                 ]
             )
         )
@@ -192,13 +199,23 @@ def construir_grafico_influencias(summary, etiquetar_columna, top_n=10):
 def construir_resumen_metricas(metrics):
     if not metrics:
         return html.Div("Random Forest no pudo entrenarse con suficientes datos.")
+    if metrics.get("error"):
+        return html.Div(metrics["error"])
 
     filas = [
         html.Tr([html.Th("Metrica"), html.Th("Valor")]),
-        html.Tr([html.Td("Filas train"), html.Td(str(metrics["train_rows"]))]),
-        html.Tr([html.Td("Filas test"), html.Td(str(metrics["test_rows"]))]),
-        html.Tr([html.Td("R2 test"), html.Td(f"{metrics['test_r2']:.4f}")]),
-        html.Tr([html.Td("MAE test"), html.Td(f"{metrics['test_mae']:.4f}")]),
+        html.Tr([html.Td("Filas contexto"), html.Td(str(metrics.get("context_rows", "-")))]),
+        html.Tr([html.Td("Min overlap"), html.Td(str(metrics.get("min_overlap", "-")))]),
+        html.Tr([html.Td("Tamano batch RF"), html.Td(str(metrics.get("rf_batch_features", "-")))]),
+        html.Tr([html.Td("Batches RF"), html.Td(str(metrics.get("batches_total", "-")))]),
+        html.Tr([html.Td("Batches RF exitosos"), html.Td(str(metrics.get("batches_trained", "-")))]),
+        html.Tr([html.Td("Variables con RF"), html.Td(str(metrics.get("features_scored", "-")))]),
+        html.Tr([html.Td("Filas train"), html.Td(f"{metrics.get('train_rows_min', '-')} a {metrics.get('train_rows_max', '-')}")]),
+        html.Tr([html.Td("Filas test"), html.Td(f"{metrics.get('test_rows_min', '-')} a {metrics.get('test_rows_max', '-')}")]),
+        html.Tr([html.Td("R2 test promedio"), html.Td(formatear_valor_metrica(metrics.get("test_r2_mean")))]),
+        html.Tr([html.Td("MAE test promedio"), html.Td(formatear_valor_metrica(metrics.get("test_mae_mean")))]),
+        html.Tr([html.Td("Features usadas promedio"), html.Td(formatear_valor_metrica(metrics.get("features_used_mean")))]),
+        html.Tr([html.Td("Features descartadas promedio"), html.Td(formatear_valor_metrica(metrics.get("features_dropped_mean")))]),
     ]
     return html.Div([html.Table(filas)])
 

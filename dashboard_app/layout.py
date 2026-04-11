@@ -263,5 +263,39 @@ def build_layout(fases):
                 ],
                 style=ANALISIS_SECTIONS_STYLE,
             ),
+            html.Div(
+                [
+                    html.H1("Relaciones personalizadas", style=TITULO_CENTRADO_STYLE),
+                    html.Div(
+                        "Usa la variable seleccionada en Reporte como objetivo y elige aqui una sola variable de comparacion.",
+                        style={"marginBottom": "12px"},
+                    ),
+                    html.Div(
+                        [
+                            dcc.Dropdown(
+                                id="selected-relationship-phase-dropdown",
+                                options=[{"label": formatear_nombre_fase(fase), "value": fase} for fase in fases],
+                                value=None,
+                                placeholder="Seleccionar fase",
+                            ),
+                            dcc.Dropdown(
+                                id="selected-relationship-variable-dropdown",
+                                options=[],
+                                value=None,
+                                placeholder="Seleccionar variable de comparacion",
+                            ),
+                        ],
+                        style={
+                            "display": "grid",
+                            "gridTemplateColumns": "minmax(240px, 1fr) minmax(320px, 2fr)",
+                            "gap": "12px",
+                            "alignItems": "center",
+                            "marginBottom": "16px",
+                        },
+                    ),
+                    html.Div(id="selected-relationships-container"),
+                ],
+                style={"marginTop": "24px"},
+            ),
         ]
     )
