@@ -4,6 +4,11 @@ import pandas as pd
 
 from data_processing.analysis_dataset import load_combined_dataset
 from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
+from dashboard_app.domain.filters import (
+    construir_rango_fecha,
+    normalizar_filtros_guardados,
+    obtener_filtros_fecha,
+)
 from dashboard_app.domain.operation_events import obtener_eventos_operacion
 
 
@@ -69,6 +74,8 @@ MODO_OPERACION_OPCIONES = [
     {"label": "Toda la data", "value": "toda"},
     {"label": "Operacion normal", "value": "normal"},
 ]
+
+UMBRAL_REESCALADO = pd.Timedelta(days=365)
 
 def normalizar_serie(serie):
     rango = serie.max() - serie.min()
@@ -143,27 +150,33 @@ def normalizar_lista_unica(valores):
     return sorted(set(valores), key=lambda x: x.lower())
 
 
+def resolver_freq_desde_rango(rango, freq_por_defecto="1h"):
+    if not rango or len(rango) < 2:
+        return freq_por_defecto
+
+    inicio_dt = pd.to_datetime(rango[0], errors="coerce")
+    fin_dt = pd.to_datetime(rango[1], errors="coerce")
+    return resolver_freq_por_periodo(inicio_dt, fin_dt, freq_por_defecto)
+
+
+def resolver_freq_por_periodo(inicio_dt, fin_dt, freq_por_defecto="1h"):
+    if inicio_dt is None or fin_dt is None:
+        return freq_por_defecto
+    if pd.isna(inicio_dt) or pd.isna(fin_dt):
+        return freq_por_defecto
+    if fin_dt < inicio_dt:
+        inicio_dt, fin_dt = fin_dt, inicio_dt
+    return "5min" if (fin_dt - inicio_dt) < UMBRAL_REESCALADO else "1h"
+
+
 def obtener_freq_desde_relayout(relayout_data):
     if not relayout_data:
         return "1h"
 
-    inicio = relayout_data.get("xaxis.range[0]") or relayout_data.get("xaxis.range", [None, None])[0]
-    fin = relayout_data.get("xaxis.range[1]") or relayout_data.get("xaxis.range", [None, None])[1]
-    if not inicio or not fin:
+    rango = obtener_rango_desde_relayout(relayout_data)
+    if rango is None:
         return "1h"
-
-    try:
-        inicio_dt = pd.to_datetime(inicio)
-        fin_dt = pd.to_datetime(fin)
-    except Exception:
-        return "1h"
-
-    if inicio_dt is None or fin_dt is None:
-        return "1h"
-    if pd.isna(inicio_dt) or pd.isna(fin_dt):
-        return "1h"
-
-    return "5min" if (fin_dt - inicio_dt).days < 365 else "1h"
+    return resolver_freq_desde_rango(rango)
 
 
 def obtener_rango_desde_relayout(relayout_data):
@@ -180,14 +193,41 @@ def obtener_rango_desde_relayout(relayout_data):
 def obtener_freq_desde_estado_grafico(estado_grafico):
     if not estado_grafico:
         return "1h"
-    return estado_grafico.get("freq", "1h")
+    return resolver_freq_desde_rango(
+        estado_grafico.get("range"),
+        estado_grafico.get("freq", "1h"),
+    )
 
 
-def obtener_freq_efectiva(estado_grafico, modo_operacion="toda", arranque_id=None, parada_id=None):
+def obtener_freq_desde_filtros_fecha(filtros_guardados):
+    filtros_fecha = obtener_filtros_fecha(normalizar_filtros_guardados(filtros_guardados))
+    if not filtros_fecha:
+        return None
+
+    frecuencias = []
+    for filtro in filtros_fecha:
+        inicio_dt, fin_dt = construir_rango_fecha(filtro)
+        if inicio_dt is None or fin_dt is None:
+            continue
+        frecuencias.append(resolver_freq_por_periodo(inicio_dt, fin_dt))
+
+    if not frecuencias:
+        return None
+    return "5min" if all(freq == "5min" for freq in frecuencias) else "1h"
+
+
+def obtener_freq_efectiva(
+    estado_grafico,
+    filtros_guardados=None,
+    modo_operacion="toda",
+    arranque_id=None,
+    parada_id=None,
+):
     if arranque_id or parada_id:
         return "5min"
-    if modo_operacion != "toda":
-        return "1h"
+    freq_filtros = obtener_freq_desde_filtros_fecha(filtros_guardados)
+    if freq_filtros is not None:
+        return freq_filtros
     return obtener_freq_desde_estado_grafico(estado_grafico)
 
 
@@ -307,10 +347,15 @@ def construir_mascara_contexto_operacion(df, modo_operacion="toda", arranque_id=
     return mascara
 
 
-def cargar_dataset_para_columnas(freq, columnas_requeridas, cargar_todo_si_vacio=False):
+def cargar_dataset_para_columnas(
+    freq,
+    columnas_requeridas,
+    cargar_todo_si_vacio=False,
+    rango_tiempo=None,
+):
     columnas = list(dict.fromkeys(columnas_requeridas or []))
     if not columnas:
         if cargar_todo_si_vacio:
-            return load_combined_dataset(freq)
+            return load_combined_dataset(freq, time_range=rango_tiempo)
         return pd.DataFrame()
-    return load_combined_dataset(freq, columns=columnas)
+    return load_combined_dataset(freq, columns=columnas, time_range=rango_tiempo)

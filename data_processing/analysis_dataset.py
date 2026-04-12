@@ -60,7 +60,20 @@ def build_combined_dataset_1h():
     return combined_1h
 
 
-def load_combined_dataset(freq="5min", columns=None):
+def normalizar_rango_tiempo(time_range):
+    if not time_range or len(time_range) < 2:
+        return None, None
+
+    inicio = pd.to_datetime(time_range[0], errors="coerce")
+    fin = pd.to_datetime(time_range[1], errors="coerce")
+    if pd.isna(inicio) or pd.isna(fin):
+        return None, None
+    if fin < inicio:
+        inicio, fin = fin, inicio
+    return inicio, fin
+
+
+def load_combined_dataset(freq="5min", columns=None, time_range=None):
     dataset_path = get_combined_dataset_path(freq)
     if not dataset_path.exists():
         if freq == "1h":
@@ -71,13 +84,30 @@ def load_combined_dataset(freq="5min", columns=None):
         columns = list(dict.fromkeys(columns))
         if not columns:
             return pd.DataFrame()
-        df = pd.read_parquet(dataset_path, columns=columns)
+        read_kwargs = {"columns": columns}
     else:
-        df = pd.read_parquet(dataset_path)
+        read_kwargs = {}
+
+    inicio, fin = normalizar_rango_tiempo(time_range)
+    if inicio is not None and fin is not None:
+        read_kwargs["filters"] = [
+            ("__index_level_0__", ">=", inicio),
+            ("__index_level_0__", "<=", fin),
+        ]
+
+    try:
+        df = pd.read_parquet(dataset_path, engine="pyarrow", **read_kwargs)
+    except Exception:
+        read_kwargs.pop("filters", None)
+        df = pd.read_parquet(dataset_path, engine="pyarrow", **read_kwargs)
 
     df.index = pd.to_datetime(df.index)
-    return df.sort_index()
+    df = df.sort_index()
+
+    if inicio is not None and fin is not None:
+        df = df.loc[(df.index >= inicio) & (df.index <= fin)]
+    return df
 
 
-def load_combined_dataset_5m(columns=None):
-    return load_combined_dataset("5min", columns=columns)
+def load_combined_dataset_5m(columns=None, time_range=None):
+    return load_combined_dataset("5min", columns=columns, time_range=time_range)

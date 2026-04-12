@@ -1,4 +1,4 @@
-from dash import Input, Output, State
+from dash import Input, Output, State, no_update
 import plotly.graph_objects as go
 
 from dashboard_app.callbacks.common import (
@@ -27,19 +27,21 @@ def register_timeseries_callbacks(app):
     def actualizar_estado_grafico(relayout_data, estado_grafico):
         estado_grafico = dict(estado_grafico or {"freq": "1h", "range": None})
         if not relayout_data:
-            return estado_grafico
+            return no_update
 
         if relayout_data.get("xaxis.autorange"):
-            return {"freq": "1h", "range": None}
+            nuevo_estado = {"freq": "1h", "range": None}
+            return no_update if nuevo_estado == estado_grafico else nuevo_estado
 
         rango = obtener_rango_desde_relayout(relayout_data)
         if rango is None:
-            return estado_grafico
+            return no_update
 
-        return {
+        nuevo_estado = {
             "freq": obtener_freq_desde_relayout(relayout_data),
             "range": rango,
         }
+        return no_update if nuevo_estado == estado_grafico else nuevo_estado
 
     @app.callback(
         Output("grafico", "figure"),
@@ -71,11 +73,18 @@ def register_timeseries_callbacks(app):
             for filtro in obtener_filtros_variable(filtros_guardados)
             if filtro.get("columna")
         ]
-        freq = obtener_freq_efectiva(estado_grafico, modo_operacion, arranque_id, parada_id)
+        freq = obtener_freq_efectiva(
+            estado_grafico,
+            filtros_guardados,
+            modo_operacion,
+            arranque_id,
+            parada_id,
+        )
         df_combinado = cargar_dataset_para_columnas(
             freq,
             columnas_requeridas,
             cargar_todo_si_vacio=modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
+            rango_tiempo=rango_visible,
         )
         mascara = combinar_mascaras(
             construir_mascara_desde_df(df_combinado, filtros_guardados),

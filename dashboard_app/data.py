@@ -1,7 +1,19 @@
+import base64
+from pathlib import Path
+
 from pyarrow import parquet as pq
 from pyarrow import types as patypes
 
 from data_processing.analysis_dataset import get_combined_dataset_path, load_combined_dataset
+
+
+IMAGES_DIR = Path(__file__).resolve().parent / "images"
+IMAGE_SUFFIX_TO_MIME = {
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".png": "image/png",
+    ".webp": "image/webp",
+}
 
 
 def formatear_nombre_fase(fase):
@@ -59,3 +71,36 @@ def obtener_columnas_fase(fase, freq):
         for columna in obtener_columnas_dataset(freq)
         if columna.startswith(prefijo)
     ]
+
+
+def obtener_ruta_imagen_planta():
+    return IMAGES_DIR / "planta.jpg"
+
+
+def obtener_ruta_imagen_fase(fase):
+    if not fase:
+        return None
+    return IMAGES_DIR / f"{fase}.jpg"
+
+
+def codificar_imagen_data_uri(path_str):
+    path = Path(path_str)
+    mime = IMAGE_SUFFIX_TO_MIME.get(path.suffix.lower())
+    if mime is None or not path.exists():
+        return None
+    contenido = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f"data:{mime};base64,{contenido}"
+
+
+def obtener_data_uri_imagen_planta():
+    path = obtener_ruta_imagen_planta()
+    if path is None:
+        return None
+    return codificar_imagen_data_uri(str(path))
+
+
+def obtener_data_uri_imagen_fase(fase):
+    path = obtener_ruta_imagen_fase(fase)
+    if path is None:
+        return None
+    return codificar_imagen_data_uri(str(path))

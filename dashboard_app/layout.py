@@ -7,7 +7,7 @@ from dashboard_app.callbacks.common import (
     construir_opciones_arranques,
     construir_opciones_paradas,
 )
-from dashboard_app.data import formatear_nombre_fase
+from dashboard_app.data import formatear_nombre_fase, obtener_data_uri_imagen_planta
 from dashboard_app.repositories.analysis_cache import get_precomputed_analysis_columns
 
 SELECTORES_STYLE = {
@@ -58,15 +58,90 @@ ANALISIS_SECTIONS_STYLE = {
     "alignItems": "start",
 }
 
+SECCION_IMAGEN_STYLE = {
+    "marginBottom": "24px",
+    "padding": "16px",
+    "border": "1px solid #d9d9d9",
+    "borderRadius": "12px",
+    "backgroundColor": "#fafafa",
+}
+
+IMAGEN_PREVIEW_STYLE = {
+    "display": "block",
+    "width": "100%",
+    "maxWidth": "540px",
+    "height": "auto",
+    "margin": "0 auto",
+    "borderRadius": "10px",
+    "boxShadow": "0 4px 14px rgba(0, 0, 0, 0.08)",
+}
+
+TITULO_SECCION_STYLE = {
+    "fontSize": "24px",
+    "fontWeight": "700",
+    "textAlign": "center",
+    "marginBottom": "12px",
+}
+
+DESCRIPCION_SECCION_STYLE = {
+    "textAlign": "center",
+    "marginBottom": "16px",
+    "color": "#555555",
+}
+
+ESTADO_IMAGEN_STYLE = {
+    "textAlign": "center",
+    "padding": "16px",
+    "color": "#666666",
+}
+
 
 def construir_boton_agregar(button_id):
     return html.Button("+", id=button_id, n_clicks=0, style=ACCION_AGREGAR_STYLE)
 
 
+def construir_seccion_planta():
+    planta_src = obtener_data_uri_imagen_planta()
+    contenido = [html.Div("PLANTA DE ALQUILACIÓN", style=TITULO_SECCION_STYLE)]
+    if planta_src:
+        contenido.append(
+            html.Img(
+                src=planta_src,
+                alt="Planta de alquilación",
+                style=IMAGEN_PREVIEW_STYLE,
+            )
+        )
+    else:
+        contenido.append(
+            html.Div(
+                "No se encontro la imagen principal de la planta.",
+                style=ESTADO_IMAGEN_STYLE,
+            )
+        )
+    return html.Div(contenido, style=SECCION_IMAGEN_STYLE)
+
+
+def construir_placeholder_imagen_fase():
+    return html.Div(
+        "Selecciona una fase para ver su plano de proceso aqui.",
+        style=ESTADO_IMAGEN_STYLE,
+    )
+
+
 def build_layout(fases):
     return html.Div(
         [
+            construir_seccion_planta(),
             html.H1("Variables", style=TITULO_CENTRADO_STYLE),
+            html.Div(
+                [
+                    html.Div(
+                        id="fase-imagen-container",
+                        children=construir_placeholder_imagen_fase(),
+                    ),
+                ],
+                style=SECCION_IMAGEN_STYLE,
+            ),
             html.Div(
                 [
                     dcc.Dropdown(

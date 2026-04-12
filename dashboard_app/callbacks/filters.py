@@ -10,6 +10,7 @@ from dashboard_app.callbacks.common import (
     formatear_timestamp_corto,
     obtener_eventos_operacion,
     obtener_freq_efectiva,
+    obtener_rango_desde_estado_grafico,
 )
 from dashboard_app.domain.filters import (
     combinar_mascaras,
@@ -300,12 +301,19 @@ def register_filters_callbacks(app):
         else:
             chips_fecha = html.Div("No hay filtros por fecha anadidos.")
 
-        freq = obtener_freq_efectiva(estado_grafico, modo_operacion, arranque_id, parada_id)
+        freq = obtener_freq_efectiva(
+            estado_grafico,
+            filtros_guardados,
+            modo_operacion,
+            arranque_id,
+            parada_id,
+        )
+        rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
         columnas_requeridas = list(variables_seleccionadas or []) + [
             filtro["columna"] for filtro in filtros_variable if filtro.get("columna")
         ]
         chips_contexto = construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id)
-        if not columnas_requeridas and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id:
+        if not filtros_variable and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id:
             return (
                 chips_variable,
                 chips_fecha,
@@ -321,6 +329,7 @@ def register_filters_callbacks(app):
             freq,
             columnas_requeridas,
             cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
+            rango_tiempo=rango_visible,
         )
         total = len(df_combinado.index)
         mascara_total = combinar_mascaras(
@@ -330,12 +339,13 @@ def register_filters_callbacks(app):
         rechazo = ~mascara_total if mascara_total is not None else None
         eliminadas = int(rechazo.sum()) if rechazo is not None else 0
         porcentaje = (eliminadas / total * 100) if total else 0
+        alcance = "del rango visible" if rango_visible is not None else "del dataframe total"
 
         resumen = html.Div(
             [
                 chips_contexto,
                 html.Div(
-                    f"Muestras eliminadas: {eliminadas} ({porcentaje:.2f}% del dataframe total)."
+                    f"Muestras eliminadas: {eliminadas} ({porcentaje:.2f}% {alcance})."
                 ),
             ]
         )

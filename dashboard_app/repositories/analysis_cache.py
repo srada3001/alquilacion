@@ -11,16 +11,8 @@ from dashboard_app.domain.operation_events import obtener_eventos_operacion
 PRECOMPUTED_ANALYSIS_VERSION = 2
 
 PRECOMPUTED_ANALYSIS_COLUMNS = {
-    # "horno | AI-1512A",
-    # "reactor_de_alquilacion | AI-1050",
-    # "reactor_de_alquilacion | AI-1912",
-    # "regenerador_de_acido | AI-1193",
-    "tratadores_e_intercambiadores_de_butano | AI-1224A",
-    "tratadores_e_intercambiadores_de_butano | AI-1224B",
-    # "tratadores_e_intercambiadores_de_butano | AI-1224C",
-    # "tratamiento_de_efluentes | AI-1193",
-    "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
-    "variables_derivadas | tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
+    "tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
+    "tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
 }
 
 PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL = "operacion_normal"
