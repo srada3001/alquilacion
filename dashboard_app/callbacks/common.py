@@ -115,15 +115,27 @@ def construir_opciones_variables_por_fase(freq, fase, incluir_grupos=True):
             if prefijo in GRUPOS_VARIABLES:
                 conteos_grupo[prefijo] = conteos_grupo.get(prefijo, 0) + 1
 
-        grupos = sorted(
+        # Merge PI and PD pressure groups
+        pi_count = conteos_grupo.get("PI", 0)
+        pd_count = conteos_grupo.get("PD", 0)
+        grupos_merged = set(conteos_grupo.keys()) - {"PI", "PD"}
+        
+        # Add other groups with 2+ variables
+        grupos = [
             prefijo
-            for prefijo, cantidad in conteos_grupo.items()
-            if cantidad >= 2
-        )
-        opciones.extend(
-            {"label": GRUPOS_VARIABLES[grupo], "value": f"{GRUPO_PREFIX}{grupo}"}
-            for grupo in grupos
-        )
+            for prefijo in sorted(grupos_merged)
+            if conteos_grupo[prefijo] >= 2
+        ]
+        
+        # Add merged pressure group if either PI or PD has 2+ variables
+        if pi_count + pd_count >= 2:
+            grupos.append("P")
+        
+        for grupo in sorted(grupos):
+            if grupo == "P":
+                opciones.append({"label": "Presiones", "value": f"{GRUPO_PREFIX}P"})
+            else:
+                opciones.append({"label": GRUPOS_VARIABLES[grupo], "value": f"{GRUPO_PREFIX}{grupo}"})
 
     opciones.extend(
         {"label": columna, "value": construir_valor_columna(fase, columna)}
@@ -138,6 +150,15 @@ def expandir_valor_variable(freq, fase, valor):
     if valor.startswith(GRUPO_PREFIX):
         grupo = valor.replace(GRUPO_PREFIX, "", 1)
         columnas = sorted(obtener_columnas_fase(fase, freq))
+        
+        # Handle merged pressure group (P matches both PI and PD)
+        if grupo == "P":
+            return [
+                construir_valor_columna(fase, columna)
+                for columna in columnas
+                if columna.startswith("PI") or columna.startswith("PD")
+            ]
+        
         return [
             construir_valor_columna(fase, columna)
             for columna in columnas
