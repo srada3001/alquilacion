@@ -9,7 +9,7 @@ from dashboard_app.domain.filters import (
     normalizar_filtros_guardados,
     obtener_filtros_fecha,
 )
-from dashboard_app.domain.operation_events import obtener_eventos_operacion
+from dashboard_app.domain.operation_events import obtener_eventos_operacion, obtener_operaciones
 
 
 BADGE_CONTAINER_STYLE = {
@@ -72,7 +72,7 @@ GRUPOS_VARIABLES = {
 
 MODO_OPERACION_OPCIONES = [
     {"label": "Toda la data", "value": "toda"},
-    {"label": "Operacion normal", "value": "normal"},
+    {"label": "Operación completa", "value": "completa"},
 ]
 
 UMBRAL_REESCALADO = pd.Timedelta(days=365)
@@ -222,8 +222,9 @@ def obtener_freq_efectiva(
     modo_operacion="toda",
     arranque_id=None,
     parada_id=None,
+    operacion_id=None,
 ):
-    if arranque_id or parada_id:
+    if arranque_id or parada_id or operacion_id:
         return "5min"
     freq_filtros = obtener_freq_desde_filtros_fecha(filtros_guardados)
     if freq_filtros is not None:
@@ -279,6 +280,22 @@ def construir_opciones_paradas():
     return opciones
 
 
+def construir_opciones_operaciones():
+    opciones = []
+    for operacion in obtener_operaciones():
+        opciones.append(
+            {
+                "label": (
+                    f"Operación {operacion['indice']:02d}: "
+                    f"{formatear_timestamp_corto(operacion['operacion_inicio'])} a "
+                    f"{formatear_timestamp_corto(operacion['operacion_fin'])}"
+                ),
+                "value": operacion["operacion_id"],
+            }
+        )
+    return opciones
+
+
 @lru_cache(maxsize=2)
 def get_operational_reference_index():
     df_5min = load_combined_dataset("5min")
@@ -302,13 +319,19 @@ def get_downtime_mask_5min():
     return mask
 
 
-def construir_mascara_contexto_operacion(df, modo_operacion="toda", arranque_id=None, parada_id=None):
+def construir_mascara_contexto_operacion(
+    df,
+    modo_operacion="toda",
+    arranque_id=None,
+    parada_id=None,
+    operacion_id=None,
+):
     if df.empty:
         return None
 
     mascara = None
 
-    if modo_operacion == "normal":
+    if modo_operacion == "completa":
         downtime_mask = get_downtime_mask_5min().reindex(df.index, fill_value=False)
         mascara = ~downtime_mask
 
@@ -343,6 +366,22 @@ def construir_mascara_contexto_operacion(df, modo_operacion="toda", arranque_id=
             )
             parada_mask = parada_mask_5min.reindex(df.index, fill_value=False)
         mascara = parada_mask if mascara is None else (mascara & parada_mask)
+
+    if operacion_id:
+        operacion = next(
+            (item for item in obtener_operaciones() if item["operacion_id"] == operacion_id),
+            None,
+        )
+        if operacion is None or operacion["operacion_inicio"] is None or operacion["operacion_fin"] is None:
+            operacion_mask = pd.Series(False, index=df.index)
+        else:
+            indice_5min = get_operational_reference_index()
+            operacion_mask_5min = pd.Series(
+                (indice_5min >= operacion["operacion_inicio"]) & (indice_5min <= operacion["operacion_fin"]),
+                index=indice_5min,
+            )
+            operacion_mask = operacion_mask_5min.reindex(df.index, fill_value=False)
+        mascara = operacion_mask if mascara is None else (mascara & operacion_mask)
 
     return mascara
 

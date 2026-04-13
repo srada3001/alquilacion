@@ -26,6 +26,7 @@ def filtrar_dataset_para_contexto(df_influence_base, contexto):
         modo_operacion=contexto["modo_operacion"],
         arranque_id=contexto["arranque_id"],
         parada_id=contexto["parada_id"],
+        operacion_id=contexto["operacion_id"],
     )
     if mascara is None:
         return df_influence_base

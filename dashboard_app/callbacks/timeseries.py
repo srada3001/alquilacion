@@ -52,6 +52,7 @@ def register_timeseries_callbacks(app):
         Input("modo-operacion-radio", "value"),
         Input("filtro-arranque-dropdown", "value"),
         Input("filtro-parada-dropdown", "value"),
+        Input("filtro-operacion-dropdown", "value"),
     )
     def actualizar_grafico(
         estado_grafico,
@@ -61,6 +62,7 @@ def register_timeseries_callbacks(app):
         modo_operacion,
         arranque_id,
         parada_id,
+        operacion_id,
     ):
         rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
         columnas = list(variables_seleccionadas or [])
@@ -79,16 +81,17 @@ def register_timeseries_callbacks(app):
             modo_operacion,
             arranque_id,
             parada_id,
+            operacion_id,
         )
         df_combinado = cargar_dataset_para_columnas(
             freq,
             columnas_requeridas,
-            cargar_todo_si_vacio=modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
+            cargar_todo_si_vacio=modo_operacion != "toda" or bool(arranque_id) or bool(parada_id) or bool(operacion_id),
             rango_tiempo=rango_visible,
         )
         mascara = combinar_mascaras(
             construir_mascara_desde_df(df_combinado, filtros_guardados),
-            construir_mascara_contexto_operacion(df_combinado, modo_operacion, arranque_id, parada_id),
+            construir_mascara_contexto_operacion(df_combinado, modo_operacion, arranque_id, parada_id, operacion_id),
         )
         if mascara is not None:
             mascara = mascara.reindex(df_combinado.index, fill_value=False)
@@ -119,9 +122,10 @@ def register_timeseries_callbacks(app):
             showlegend=True,
             uirevision=(
                 f"grafico-principal::{modo_operacion}::"
-                f"{arranque_id or 'sin-arranque'}::{parada_id or 'sin-parada'}"
+                f"{arranque_id or 'sin-arranque'}::{parada_id or 'sin-parada'}::"
+                f"{operacion_id or 'sin-operacion'}"
             ),
         )
-        if rango_visible is not None and modo_operacion == "toda" and not arranque_id and not parada_id:
+        if rango_visible is not None and modo_operacion == "toda" and not arranque_id and not parada_id and not operacion_id:
             fig.update_layout(xaxis_range=rango_visible)
         return fig

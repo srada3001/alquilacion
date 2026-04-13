@@ -62,6 +62,7 @@ def obtener_eventos_operacion():
             {
                 "arranque_id": f"arranque-{indice:02d}",
                 "parada_id": f"parada-{indice:02d}",
+                "operacion_id": f"operacion-{indice:02d}",
                 "indice": indice,
                 "parada_inicio": pd.Timestamp(parada_inicio),
                 "parada_fin": pd.Timestamp(parada_fin),
@@ -70,3 +71,29 @@ def obtener_eventos_operacion():
             }
         )
     return eventos
+
+
+def obtener_operaciones():
+    operaciones = []
+    eventos = obtener_eventos_operacion()
+
+    for indice, evento in enumerate(eventos, start=1):
+        siguiente_evento = eventos[indice] if indice < len(eventos) else None
+        inicio = evento["arranque_inicio"]
+        fin = siguiente_evento["parada_fin"] if siguiente_evento is not None else None
+
+        if inicio is None or fin is None or fin <= inicio:
+            continue
+
+        operaciones.append(
+            {
+                "operacion_id": f"operacion-{len(operaciones) + 1:02d}",
+                "indice": len(operaciones) + 1,
+                "arranque_indice": evento["indice"],
+                "parada_indice": siguiente_evento["indice"],
+                "operacion_inicio": inicio,
+                "operacion_fin": fin,
+            }
+        )
+
+    return operaciones

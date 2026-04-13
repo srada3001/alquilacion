@@ -9,6 +9,7 @@ from dashboard_app.callbacks.common import (
     construir_etiqueta_columna,
     formatear_timestamp_corto,
     obtener_eventos_operacion,
+    obtener_operaciones,
     obtener_freq_efectiva,
     obtener_rango_desde_estado_grafico,
 )
@@ -69,10 +70,10 @@ def construir_chip_filtro_fecha(filtro):
     )
 
 
-def construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id):
+def construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id, operacion_id):
     chips = []
-    if modo_operacion == "normal":
-        chips.append(html.Div([html.Span("Modo: Operacion normal")], style=BADGE_STYLE))
+    if modo_operacion == "completa":
+        chips.append(html.Div([html.Span("Modo: Operación completa")], style=BADGE_STYLE))
 
     if arranque_id:
         evento = next((item for item in obtener_eventos_operacion() if item["arranque_id"] == arranque_id), None)
@@ -106,6 +107,22 @@ def construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id):
                 )
             )
 
+    if operacion_id:
+        operacion = next((item for item in obtener_operaciones() if item["operacion_id"] == operacion_id), None)
+        if operacion is not None and operacion["operacion_inicio"] is not None and operacion["operacion_fin"] is not None:
+            chips.append(
+                html.Div(
+                    [
+                        html.Span(
+                            f"Operación {operacion['indice']:02d}: "
+                            f"{formatear_timestamp_corto(operacion['operacion_inicio'])} a "
+                            f"{formatear_timestamp_corto(operacion['operacion_fin'])}"
+                        )
+                    ],
+                    style=BADGE_STYLE,
+                )
+            )
+
     if not chips:
         return html.Div("Contexto operacional: toda la data.")
     return html.Div(chips, style=BADGE_CONTAINER_STYLE)
@@ -118,6 +135,7 @@ def construir_mascara_global(
     modo_operacion="toda",
     arranque_id=None,
     parada_id=None,
+    operacion_id=None,
 ):
     filtros_normalizados = normalizar_filtros_guardados(filtros)
     filtros_fecha = obtener_filtros_fecha(filtros_normalizados)
@@ -127,17 +145,17 @@ def construir_mascara_global(
         if filtro.get("columna")
     ]
     columnas_requeridas = list(columnas_base or []) + columnas_filtro
-    if not columnas_requeridas and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id:
+    if not columnas_requeridas and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id and not operacion_id:
         return None
 
     df_filtros = cargar_dataset_para_columnas(
         freq,
         columnas_requeridas,
-        cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
+        cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id) or bool(operacion_id),
     )
     return combinar_mascaras(
         construir_mascara_desde_df(df_filtros, filtros_normalizados),
-        construir_mascara_contexto_operacion(df_filtros, modo_operacion, arranque_id, parada_id),
+        construir_mascara_contexto_operacion(df_filtros, modo_operacion, arranque_id, parada_id, operacion_id),
     )
 
 
@@ -272,6 +290,7 @@ def register_filters_callbacks(app):
         Input("modo-operacion-radio", "value"),
         Input("filtro-arranque-dropdown", "value"),
         Input("filtro-parada-dropdown", "value"),
+        Input("filtro-operacion-dropdown", "value"),
     )
     def mostrar_filtros(
         estado_grafico,
@@ -280,6 +299,7 @@ def register_filters_callbacks(app):
         modo_operacion,
         arranque_id,
         parada_id,
+        operacion_id,
     ):
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
         filtros_variable = obtener_filtros_variable(filtros_guardados)
@@ -307,13 +327,14 @@ def register_filters_callbacks(app):
             modo_operacion,
             arranque_id,
             parada_id,
+            operacion_id,
         )
         rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
         columnas_requeridas = list(variables_seleccionadas or []) + [
             filtro["columna"] for filtro in filtros_variable if filtro.get("columna")
         ]
-        chips_contexto = construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id)
-        if not filtros_variable and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id:
+        chips_contexto = construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id, operacion_id)
+        if not filtros_variable and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id and not operacion_id:
             return (
                 chips_variable,
                 chips_fecha,
@@ -328,13 +349,13 @@ def register_filters_callbacks(app):
         df_combinado = cargar_dataset_para_columnas(
             freq,
             columnas_requeridas,
-            cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id),
+            cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id) or bool(operacion_id),
             rango_tiempo=rango_visible,
         )
         total = len(df_combinado.index)
         mascara_total = combinar_mascaras(
             construir_mascara_desde_df(df_combinado, filtros_guardados),
-            construir_mascara_contexto_operacion(df_combinado, modo_operacion, arranque_id, parada_id),
+            construir_mascara_contexto_operacion(df_combinado, modo_operacion, arranque_id, parada_id, operacion_id),
         )
         rechazo = ~mascara_total if mascara_total is not None else None
         eliminadas = int(rechazo.sum()) if rechazo is not None else 0

@@ -63,9 +63,10 @@ def register_report_callbacks(app):
         Input("modo-operacion-radio", "value"),
         Input("filtro-arranque-dropdown", "value"),
         Input("filtro-parada-dropdown", "value"),
+        Input("filtro-operacion-dropdown", "value"),
         prevent_initial_call=True,
     )
-    def actualizar_reporte(columna_reporte, filtros_guardados, modo_operacion, arranque_id, parada_id):
+    def actualizar_reporte(columna_reporte, filtros_guardados, modo_operacion, arranque_id, parada_id, operacion_id):
         if not columna_reporte:
             return []
 
@@ -76,6 +77,7 @@ def register_report_callbacks(app):
             modo_operacion=modo_operacion,
             arranque_id=arranque_id,
             parada_id=parada_id,
+            operacion_id=operacion_id,
         )
         correlaciones, serie_objetivo, df_numerico = calcular_correlaciones_para_variable(
             "1h",
@@ -110,6 +112,7 @@ def register_report_callbacks(app):
         Input("modo-operacion-radio", "value"),
         Input("filtro-arranque-dropdown", "value"),
         Input("filtro-parada-dropdown", "value"),
+        Input("filtro-operacion-dropdown", "value"),
     )
     def actualizar_relaciones_seleccionadas(
         columna_reporte,
@@ -118,6 +121,7 @@ def register_report_callbacks(app):
         modo_operacion,
         arranque_id,
         parada_id,
+        operacion_id,
     ):
         if not columna_reporte:
             return html.Div("Selecciona una variable objetivo en Reporte para ver relaciones personalizadas.")
@@ -134,6 +138,7 @@ def register_report_callbacks(app):
             modo_operacion=modo_operacion,
             arranque_id=arranque_id,
             parada_id=parada_id,
+            operacion_id=operacion_id,
         )
 
         df_numerico = load_combined_dataset("1h", columns=columnas_consulta)

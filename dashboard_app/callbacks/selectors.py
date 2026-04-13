@@ -97,6 +97,7 @@ def register_selectors_callbacks(app):
         Input("modo-operacion-radio", "value"),
         Input("filtro-arranque-dropdown", "value"),
         Input("filtro-parada-dropdown", "value"),
+        Input("filtro-operacion-dropdown", "value"),
         Input("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
     )
@@ -106,6 +107,7 @@ def register_selectors_callbacks(app):
         modo_operacion,
         arranque_id,
         parada_id,
+        operacion_id,
         fase,
         valor_actual,
     ):
@@ -115,6 +117,7 @@ def register_selectors_callbacks(app):
             modo_operacion,
             arranque_id,
             parada_id,
+            operacion_id,
         )
         opciones = construir_opciones_variables_por_fase(freq, fase, incluir_grupos=True)
         valores_validos = {opcion["value"] for opcion in opciones}
@@ -129,6 +132,7 @@ def register_selectors_callbacks(app):
         State("modo-operacion-radio", "value"),
         State("filtro-arranque-dropdown", "value"),
         State("filtro-parada-dropdown", "value"),
+        State("filtro-operacion-dropdown", "value"),
         State("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
         State("variables-seleccionadas-store", "data"),
@@ -142,6 +146,7 @@ def register_selectors_callbacks(app):
         modo_operacion,
         arranque_id,
         parada_id,
+        operacion_id,
         fase,
         valor_variable,
         variables_agregadas,
@@ -154,6 +159,7 @@ def register_selectors_callbacks(app):
             modo_operacion,
             arranque_id,
             parada_id,
+            operacion_id,
         )
 
         if disparador == "anadir-variable-btn":

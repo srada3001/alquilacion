@@ -23,7 +23,7 @@ ANALISIS_PROFUNDO_STACK_STYLE = {
 }
 
 ANALISIS_PROFUNDO_DISPONIBILIDAD_MENSAJE = (
-    "Solo disponible para operacion normal y arranques sin filtros extra."
+    "Solo disponible para Operación completa, arranques y operaciones sin filtros extra."
 )
 
 VARIABLES_REFERENCIA_PAGINA_1 = [
@@ -284,9 +284,17 @@ def register_deep_analysis_callbacks(app):
         Input("modo-operacion-radio", "value"),
         Input("filtro-arranque-dropdown", "value"),
         Input("filtro-parada-dropdown", "value"),
+        Input("filtro-operacion-dropdown", "value"),
         prevent_initial_call=True,
     )
-    def actualizar_analisis_profundo(columna_objetivo, filtros_guardados, modo_operacion, arranque_id, parada_id):
+    def actualizar_analisis_profundo(
+        columna_objetivo,
+        filtros_guardados,
+        modo_operacion,
+        arranque_id,
+        parada_id,
+        operacion_id,
+    ):
         if not columna_objetivo:
             return []
 
@@ -295,6 +303,7 @@ def register_deep_analysis_callbacks(app):
             modo_operacion=modo_operacion,
             arranque_id=arranque_id,
             parada_id=parada_id,
+            operacion_id=operacion_id,
         )
         if context_key is None or tiene_filtros_extra_analisis_profundo(filtros_guardados):
             return [html.Div(ANALISIS_PROFUNDO_DISPONIBILIDAD_MENSAJE)]

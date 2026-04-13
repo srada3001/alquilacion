@@ -5,6 +5,7 @@ from dashboard_app.callbacks.common import (
     MODO_OPERACION_OPCIONES,
     TITULO_CENTRADO_STYLE,
     construir_opciones_arranques,
+    construir_opciones_operaciones,
     construir_opciones_paradas,
 )
 from dashboard_app.data import formatear_nombre_fase, obtener_data_uri_imagen_planta
@@ -37,7 +38,7 @@ FILTROS_FECHA_STYLE = {
 
 CONTEXTO_OPERACION_STYLE = {
     "display": "grid",
-    "gridTemplateColumns": "minmax(240px, auto) minmax(280px, 1fr) minmax(280px, 1fr)",
+    "gridTemplateColumns": "minmax(220px, auto) minmax(240px, 1fr) minmax(240px, 1fr) minmax(240px, 1fr)",
     "gap": "12px",
     "alignItems": "end",
     "marginBottom": "16px",
@@ -199,6 +200,18 @@ def build_layout(fases):
                             ),
                         ]
                     ),
+                    html.Div(
+                        [
+                            html.Div("Filtro por operación", style={"fontWeight": "600", "marginBottom": "8px"}),
+                            dcc.Dropdown(
+                                id="filtro-operacion-dropdown",
+                                options=construir_opciones_operaciones(),
+                                value=None,
+                                placeholder="Seleccionar operación",
+                                clearable=True,
+                            ),
+                        ]
+                    ),
                 ],
                 style=CONTEXTO_OPERACION_STYLE,
             ),
@@ -329,7 +342,7 @@ def build_layout(fases):
                                 placeholder="Seleccionar analisis profundo precomputado",
                             ),
                             html.Div(
-                                "Solo disponible para operacion normal y arranques sin filtros extra.",
+                                "Solo disponible para Operación completa, arranques y operaciones sin filtros extra.",
                                 style={"marginBottom": "12px"},
                             ),
                             html.Div(id="deep-analysis-container"),

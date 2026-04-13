@@ -5,17 +5,17 @@ from pathlib import Path
 import pandas as pd
 
 from config import ANALYSIS_DATA_FOLDER, DATA_PATH
-from dashboard_app.domain.operation_events import obtener_eventos_operacion
+from dashboard_app.domain.operation_events import obtener_eventos_operacion, obtener_operaciones
 
 
-PRECOMPUTED_ANALYSIS_VERSION = 2
+PRECOMPUTED_ANALYSIS_VERSION = 4
 
 PRECOMPUTED_ANALYSIS_COLUMNS = {
     "tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
     "tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
 }
 
-PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL = "operacion_normal"
+PRECOMPUTED_ANALYSIS_CONTEXT_COMPLETA = "operacion_completa"
 
 
 def _sanitize_cache_key(value):
@@ -32,39 +32,62 @@ def build_precomputed_analysis_context_key(
     modo_operacion="toda",
     arranque_id=None,
     parada_id=None,
+    operacion_id=None,
 ):
+    contextos_especificos = [bool(arranque_id), bool(parada_id), bool(operacion_id)]
+    if sum(contextos_especificos) > 1:
+        return None
     if parada_id:
         return None
+    if operacion_id:
+        return str(operacion_id)
     if arranque_id:
         return str(arranque_id)
-    if modo_operacion == "normal":
-        return PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL
+    if modo_operacion == "completa":
+        return PRECOMPUTED_ANALYSIS_CONTEXT_COMPLETA
     return None
 
 
 def get_precomputed_analysis_contexts():
     contextos = [
         {
-            "key": PRECOMPUTED_ANALYSIS_CONTEXT_NORMAL,
-            "label": "Operacion normal",
-            "modo_operacion": "normal",
+            "key": PRECOMPUTED_ANALYSIS_CONTEXT_COMPLETA,
+            "label": "Operación completa",
+            "modo_operacion": "completa",
             "arranque_id": None,
             "parada_id": None,
+            "operacion_id": None,
         }
     ]
 
     for evento in obtener_eventos_operacion():
         if evento["arranque_inicio"] is None or evento["arranque_fin"] is None:
-            continue
+            pass
+        else:
+            contextos.append(
+                {
+                    "key": build_precomputed_analysis_context_key(
+                        arranque_id=evento["arranque_id"],
+                    ),
+                    "label": f"Arranque {evento['indice']:02d}",
+                    "modo_operacion": "toda",
+                    "arranque_id": evento["arranque_id"],
+                    "parada_id": None,
+                    "operacion_id": None,
+                }
+            )
+
+    for operacion in obtener_operaciones():
         contextos.append(
             {
                 "key": build_precomputed_analysis_context_key(
-                    arranque_id=evento["arranque_id"],
+                    operacion_id=operacion["operacion_id"],
                 ),
-                "label": f"Arranque {evento['indice']:02d}",
+                "label": f"Operación {operacion['indice']:02d}",
                 "modo_operacion": "toda",
-                "arranque_id": evento["arranque_id"],
+                "arranque_id": None,
                 "parada_id": None,
+                "operacion_id": operacion["operacion_id"],
             }
         )
 
