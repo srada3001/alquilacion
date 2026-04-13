@@ -103,7 +103,7 @@ def construir_boton_agregar(button_id):
 
 def construir_seccion_planta():
     planta_src = obtener_data_uri_imagen_planta()
-    contenido = [html.Div("Dashboard para el análisis de datos Planta de Alquilación", style=TITULO_SECCION_STYLE)]
+    contenido = [html.H1("Dashboard para el análisis de datos Planta de Alquilación", style=TITULO_CENTRADO_STYLE)]
     if planta_src:
         contenido.append(
             html.Img(
