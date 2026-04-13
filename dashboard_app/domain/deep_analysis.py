@@ -23,7 +23,7 @@ RANDOM_STATE = 42
 
 def build_lag_steps():
     lags = set(range(0, 13))
-    lags.update(range(15, 144, 3))
+    lags.update(range(15, 72, 3))
     return sorted(lags)
 
 
