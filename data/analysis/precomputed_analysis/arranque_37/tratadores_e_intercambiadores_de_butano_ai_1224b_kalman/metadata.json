@@ -1,0 +1,22 @@
+{
+  "version": 4,
+  "column_name": "tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
+  "context_key": "arranque-37",
+  "metrics": {
+    "batches_total": 30,
+    "batches_trained": 30,
+    "features_scored": 298,
+    "train_rows_min": 101,
+    "train_rows_max": 101,
+    "test_rows_min": 26,
+    "test_rows_max": 26,
+    "test_r2_mean": -19.229225423353352,
+    "test_mae_mean": 0.002450974598995587,
+    "features_used_mean": 9.933333333333334,
+    "features_dropped_mean": 0.0,
+    "context_rows": 127,
+    "min_overlap": 63,
+    "te_bins": 5,
+    "rf_batch_features": 10
+  }
+}
