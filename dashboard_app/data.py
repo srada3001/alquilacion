@@ -4,10 +4,11 @@ from pathlib import Path
 from pyarrow import parquet as pq
 from pyarrow import types as patypes
 
+from config import DATA_PATH
 from data_processing.analysis_dataset import get_combined_dataset_path, load_combined_dataset
 
 
-IMAGES_DIR = Path(__file__).resolve().parent / "images"
+IMAGES_DIR = Path(DATA_PATH) / "images"
 IMAGE_SUFFIX_TO_MIME = {
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
