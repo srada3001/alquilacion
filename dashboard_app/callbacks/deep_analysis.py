@@ -26,7 +26,7 @@ ANALISIS_PROFUNDO_DISPONIBILIDAD_MENSAJE = (
     "Solo disponible para Operación completa, arranques y operaciones sin filtros extra."
 )
 
-VARIABLES_REFERENCIA_PAGINA_1 = [
+VARIABLES_INTERES = [
     ("TI 2105", ["debutanizadora_y_tratamiento_de_alquilato | TI-2105"]),
     ("PI 2108", ["debutanizadora_y_tratamiento_de_alquilato | PI-2108"]),
     ("PI 2124", ["debutanizadora_y_tratamiento_de_alquilato | PI-2124", "debutanizadora_y_tratamiento_de_alquilato | PIC-2124"]),
@@ -39,9 +39,6 @@ VARIABLES_REFERENCIA_PAGINA_1 = [
     ("FIC 1059 C", ["reactor_de_alquilacion | FIC-1059C", "lab_isobutano_reciclo | FIC-1059C Olefinas 1"]),
     ("FIC 1903 C", ["reactor_de_alquilacion | FIC-1903C", "lab_isobutano_reciclo | FIC-1903C-Olefinas 2", "horno | FIC-1903C-F-2-OLEFINAS"]),
     ("Relacion isobutano / olefina", ["lab_isobutano_reciclo | Relacion 1 Ol/iso", "lab_isobutano_reciclo | Relacion 2 Ol/iso"]),
-]
-
-VARIABLES_REFERENCIA_PAGINA_2 = [
     ("TIC 1091", ["isostripper | TIC-1091"]),
     ("TI 1521", ["horno | TI-1521"]),
     ("TI 1098", ["isostripper | TI-1098"]),
@@ -55,6 +52,9 @@ VARIABLES_REFERENCIA_PAGINA_2 = [
     ("PI 1924", ["reactor_de_alquilacion | PI-1924", "reactor_de_alquilacion | LIC-1924"]),
     ("FIC 1047", ["reactor_de_alquilacion | FIC-1047", "horno | FIC-1047-F-1-ISOBUTANO"]),
     ("FIC 1903", ["reactor_de_alquilacion | FIC-1903C", "horno | FIC-1903C-F-2-OLEFINAS"]),
+    ("Relacion 2C-4=/1C-4= Prefiltrada", ["lab_R-202 | Relacion 2C-4=/1C-4=-Prefiltrada"]),
+    ("Relacion 1 Ol/iso Prefiltrada", ["lab_isobutano_reciclo | Relacion 1 Ol/iso-Prefiltrada"]),
+    ("Relacion 2 Ol/iso Prefiltrada", ["lab_isobutano_reciclo | Relacion 2 Ol/iso-Prefiltrada"]),
 ]
 
 
@@ -248,13 +248,8 @@ def construir_bloque_analisis_profundo(influence_result):
                     ),
                     construir_tabla_variables_referencia(
                         summary,
-                        VARIABLES_REFERENCIA_PAGINA_1,
-                        "Variables de referencia (pagina 1)",
-                    ),
-                    construir_tabla_variables_referencia(
-                        summary,
-                        VARIABLES_REFERENCIA_PAGINA_2,
-                        "Variables de referencia (pagina 2)",
+                        VARIABLES_INTERES,
+                        "Variables de interes",
                     ),
                 ],
                 style=ANALISIS_PROFUNDO_STACK_STYLE,

@@ -13,6 +13,9 @@ PRECOMPUTED_ANALYSIS_VERSION = 4
 PRECOMPUTED_ANALYSIS_COLUMNS = {
     "tratadores_e_intercambiadores_de_butano | AI-1224A-Kalman",
     "tratadores_e_intercambiadores_de_butano | AI-1224B-Kalman",
+    "lab_R-202 | Relacion 2C-4=/1C-4=-Prefiltrada",
+    "lab_isobutano_reciclo | Relacion 1 Ol/iso-Prefiltrada",
+    "lab_isobutano_reciclo | Relacion 2 Ol/iso-Prefiltrada",
 }
 
 PRECOMPUTED_ANALYSIS_CONTEXT_COMPLETA = "operacion_completa"

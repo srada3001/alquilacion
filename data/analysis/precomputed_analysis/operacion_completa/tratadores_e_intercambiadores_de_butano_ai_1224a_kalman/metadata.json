@@ -10,7 +10,7 @@
     "train_rows_max": 176000,
     "test_rows_min": 44000,
     "test_rows_max": 44000,
-    "test_r2_mean": -0.41616637474089496,
+    "test_r2_mean": -0.416166374740895,
     "test_mae_mean": 10.933532756169914,
     "features_used_mean": 23.6,
     "features_dropped_mean": 0.0,

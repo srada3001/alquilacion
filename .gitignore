@@ -1,8 +1,4 @@
-data/*
-!data/analysis/
-data/analysis/*
-!data/analysis/precomputed_analysis/
-!data/analysis/precomputed_analysis/**
+data/
 *.log
 __pycache__/
 *.pyc
