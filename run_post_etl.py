@@ -15,6 +15,7 @@ from data_processing.kalman import aplicar_filtro_kalman
 KALMAN_PROCESS_VARIANCE = 0.0005
 KALMAN_MEASUREMENT_VARIANCE = 100.0
 LEGACY_DERIVED_PHASE_NAME = "variables_derivadas"
+FT3_TO_BBL = 1 / 5.614583333333333
 
 VARIABLES_KALMAN = {
     "tratadores_e_intercambiadores_de_butano": {
@@ -42,6 +43,15 @@ VARIABLES_PREFILTRADAS = {
             "min": 0,
             "max": 25,
         },
+    },
+}
+
+VARIABLES_DERIVADAS = {
+    "despropanizadora_y_despojo": {
+        "columna_nueva": "Relación de vapor de cima y carga",
+        "numerador": "FI-1148",
+        "numerador_bpd": "FI-1148BPD",
+        "denominador": "FIC-1145",
     },
 }
 
@@ -104,7 +114,37 @@ def aplicar_variables_prefiltradas(df, reglas):
     return df_actualizado, columnas_generadas
 
 
-def actualizar_fase(fase, reglas_kalman=None, reglas_prefiltradas=None):
+def aplicar_variables_derivadas(df, reglas):
+    df_actualizado = df.copy()
+    columnas_generadas = []
+
+    for regla in reglas:
+        numerador_bpd = regla["numerador_bpd"]
+
+        if numerador_bpd in df_actualizado.columns:
+            numerador = df_actualizado[numerador_bpd]
+        elif regla["numerador"] in df_actualizado.columns:
+            numerador = df_actualizado[regla["numerador"]] * FT3_TO_BBL
+        else:
+            continue
+
+        denominador_col = regla["denominador"]
+        if denominador_col not in df_actualizado.columns:
+            continue
+
+        denominador = df_actualizado[denominador_col].replace(0, pd.NA)
+        df_actualizado[regla["columna_nueva"]] = numerador / denominador
+        columnas_generadas.append(regla["columna_nueva"])
+
+    return df_actualizado, columnas_generadas
+
+
+def actualizar_fase(
+    fase,
+    reglas_kalman=None,
+    reglas_prefiltradas=None,
+    reglas_derivadas=None,
+):
     df, output_path = cargar_fase(fase)
     if df.empty:
         return output_path, []
@@ -123,6 +163,13 @@ def actualizar_fase(fase, reglas_kalman=None, reglas_prefiltradas=None):
         )
         columnas_generadas.extend(nuevas_prefiltradas)
 
+    if reglas_derivadas:
+        df_actualizado, nuevas_derivadas = aplicar_variables_derivadas(
+            df_actualizado,
+            reglas_derivadas,
+        )
+        columnas_generadas.extend(nuevas_derivadas)
+
     if columnas_generadas:
         output_path.parent.mkdir(parents=True, exist_ok=True)
         df_actualizado.to_parquet(output_path, engine="pyarrow")
@@ -131,7 +178,11 @@ def actualizar_fase(fase, reglas_kalman=None, reglas_prefiltradas=None):
 
 
 def construir_fases_post_etl():
-    fases = set(VARIABLES_KALMAN) | set(VARIABLES_PREFILTRADAS)
+    fases = (
+        set(VARIABLES_KALMAN)
+        | set(VARIABLES_PREFILTRADAS)
+        | set(VARIABLES_DERIVADAS)
+    )
     return sorted(fases)
 
 
@@ -153,6 +204,7 @@ def main():
             fase,
             reglas_kalman=VARIABLES_KALMAN.get(fase),
             reglas_prefiltradas=VARIABLES_PREFILTRADAS.get(fase),
+            reglas_derivadas=VARIABLES_DERIVADAS.get(fase),
         )
 
         if columnas_generadas:

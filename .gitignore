@@ -2,3 +2,4 @@ data/
 *.log
 __pycache__/
 *.pyc
+next_steps.md
