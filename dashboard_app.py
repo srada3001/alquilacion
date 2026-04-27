@@ -4,12 +4,15 @@ import dash
 
 from dashboard_app.callbacks import register_callbacks
 from dashboard_app.data import obtener_fases
-from dashboard_app.layout import build_layout
+from dashboard_app.pages import build_layout, register_page_callback
 
 
-app = dash.Dash(__name__)
-app.layout = build_layout(obtener_fases())
+fases = obtener_fases()
 
+app = dash.Dash(__name__, suppress_callback_exceptions=True)
+app.layout = build_layout(fases)
+
+register_page_callback(app, fases)
 register_callbacks(app)
 
 

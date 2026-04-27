@@ -1,13 +1,11 @@
-from dashboard_app.callbacks.deep_analysis import register_deep_analysis_callbacks
-from dashboard_app.callbacks.filters import register_filters_callbacks
-from dashboard_app.callbacks.report import register_report_callbacks
-from dashboard_app.callbacks.selectors import register_selectors_callbacks
-from dashboard_app.callbacks.timeseries import register_timeseries_callbacks
+from dashboard_app.pages.relaciones_no_lineales.callbacks import (
+    register_callbacks as register_relaciones_no_lineales_callbacks,
+)
+from dashboard_app.pages.series_temporales.callbacks import (
+    register_callbacks as register_series_temporales_callbacks,
+)
 
 
 def register_callbacks(app):
-    register_selectors_callbacks(app)
-    register_filters_callbacks(app)
-    register_timeseries_callbacks(app)
-    register_report_callbacks(app)
-    register_deep_analysis_callbacks(app)
+    register_series_temporales_callbacks(app)
+    register_relaciones_no_lineales_callbacks(app)

@@ -5,6 +5,7 @@ DATA_PATH = "data"
 RAW_DATA_FOLDER = "data_original"
 PROCESSED_DATA_FOLDER = "outputs"
 ANALYSIS_DATA_FOLDER = "analysis"
+METADATA_FOLDER = "metadata"
 LOGS_FOLDER = "logs"
 SUMMARIES_FOLDER = "resumenes"
 LOG_EXTENSION = ".log"
@@ -22,6 +23,10 @@ def get_processed_output_path(fase):
 
 def get_analysis_output_path(nombre):
     return os.path.join(DATA_PATH, ANALYSIS_DATA_FOLDER, f"{nombre}{PARQUET_EXTENSION}")
+
+
+def get_metadata_path(nombre):
+    return os.path.join(DATA_PATH, METADATA_FOLDER, nombre)
 
 
 def get_log_path(fase):

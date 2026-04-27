@@ -8,11 +8,9 @@ from dashboard_app.callbacks.common import (
     construir_etiqueta_columna,
 )
 from dashboard_app.repositories.analysis_cache import (
-    build_precomputed_analysis_context_key,
     get_precomputed_analysis_columns,
     load_precomputed_analysis_result,
 )
-from dashboard_app.domain.filters import normalizar_filtros_guardados
 
 
 ANALISIS_PROFUNDO_STACK_STYLE = {
@@ -267,41 +265,21 @@ def construir_bloque_resultado_profundo(influence_result):
     )
 
 
-def tiene_filtros_extra_analisis_profundo(filtros_guardados):
-    return bool(filtros_guardados["variables"] or filtros_guardados["fechas"])
-
-
 def register_deep_analysis_callbacks(app):
     @app.callback(
         Output("deep-analysis-container", "children", allow_duplicate=True),
         Input("deep-analysis-dropdown", "value"),
-        Input("filtros-store", "data"),
-        Input("modo-operacion-radio", "value"),
-        Input("filtro-arranque-dropdown", "value"),
-        Input("filtro-parada-dropdown", "value"),
-        Input("filtro-operacion-dropdown", "value"),
+        Input("deep-analysis-context-dropdown", "value"),
         prevent_initial_call=True,
     )
     def actualizar_analisis_profundo(
         columna_objetivo,
-        filtros_guardados,
-        modo_operacion,
-        arranque_id,
-        parada_id,
-        operacion_id,
+        context_key,
     ):
         if not columna_objetivo:
             return []
-
-        filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
-        context_key = build_precomputed_analysis_context_key(
-            modo_operacion=modo_operacion,
-            arranque_id=arranque_id,
-            parada_id=parada_id,
-            operacion_id=operacion_id,
-        )
-        if context_key is None or tiene_filtros_extra_analisis_profundo(filtros_guardados):
-            return [html.Div(ANALISIS_PROFUNDO_DISPONIBILIDAD_MENSAJE)]
+        if not context_key:
+            return [html.Div("Selecciona un contexto disponible para consultar el analisis profundo.")]
 
         if columna_objetivo not in get_precomputed_analysis_columns():
             return [

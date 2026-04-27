@@ -128,13 +128,69 @@ def construir_grafico_dispersion(
     return dcc.Graph(figure=figura, config={"displayModeBar": False})
 
 
-def construir_bloque_dispersiones(df_numerico, columna_objetivo, correlaciones, etiquetar_columna, top_n=4):
-    top_variables = (
+def obtener_top_variables_correlacion(correlaciones, top_n=4):
+    if correlaciones is None or correlaciones.empty:
+        return []
+    return (
         correlaciones.abs()
         .sort_values(ascending=False)
         .head(top_n)
         .index.tolist()
     )
+
+
+def construir_boxplot_relacion(
+    df_numerico,
+    columna_objetivo,
+    columna_relacion,
+    etiquetar_columna,
+):
+    columnas = [columna_objetivo, columna_relacion]
+    pares = df_numerico[columnas].dropna()
+    if pares.empty:
+        return html.Div("No hay suficientes datos para construir el boxplot.")
+
+    cuartiles = pares[columna_relacion].quantile([0.25, 0.75]).to_list()
+    grupos = [
+        ("Bajo", pares[pares[columna_relacion] <= cuartiles[0]][columna_objetivo]),
+        (
+            "Medio",
+            pares[
+                (pares[columna_relacion] > cuartiles[0])
+                & (pares[columna_relacion] <= cuartiles[1])
+            ][columna_objetivo],
+        ),
+        ("Alto", pares[pares[columna_relacion] > cuartiles[1]][columna_objetivo]),
+    ]
+
+    figura = go.Figure()
+    for etiqueta, grupo in grupos:
+        grupo = grupo.dropna()
+        if grupo.empty:
+            continue
+        figura.add_trace(
+            go.Box(
+                y=grupo,
+                name=etiqueta,
+                boxpoints=False,
+            )
+        )
+
+    if not figura.data:
+        return html.Div("No hay suficientes datos para construir el boxplot.")
+
+    figura.update_layout(
+        margin=dict(l=20, r=20, t=40, b=20),
+        height=320,
+        yaxis_title=etiquetar_columna(columna_objetivo),
+        xaxis_title=etiquetar_columna(columna_relacion),
+        showlegend=False,
+    )
+    return dcc.Graph(figure=figura, config={"displayModeBar": False})
+
+
+def construir_bloque_dispersiones(df_numerico, columna_objetivo, correlaciones, etiquetar_columna, top_n=4):
+    top_variables = obtener_top_variables_correlacion(correlaciones, top_n=top_n)
     if not top_variables:
         return html.Div("No hay suficientes correlaciones para mostrar dispersiones.")
 
@@ -159,12 +215,7 @@ def construir_bloque_dispersiones(df_numerico, columna_objetivo, correlaciones, 
 
 
 def construir_boxplot_relaciones(df_numerico, columna_objetivo, correlaciones, etiquetar_columna, top_n=4):
-    top_variables = (
-        correlaciones.abs()
-        .sort_values(ascending=False)
-        .head(top_n)
-        .index.tolist()
-    )
+    top_variables = obtener_top_variables_correlacion(correlaciones, top_n=top_n)
     if not top_variables:
         return html.Div("No hay suficientes correlaciones para mostrar boxplots.")
 
