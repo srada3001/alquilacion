@@ -47,6 +47,14 @@ REPORTE_RESUMEN_STYLE = {
     "marginBottom": "24px",
 }
 
+REPORTE_HISTOGRAMA_STYLE = {
+    "gridColumn": "2 / 4",
+}
+
+REPORTE_CORRELACIONES_STYLE = {
+    "gridColumn": "1 / -1",
+}
+
 RELACION_FILA_STYLE = {
     "display": "grid",
     "gridTemplateColumns": "minmax(0, 2fr) minmax(320px, 1fr)",
@@ -210,13 +218,15 @@ def construir_bloque_reporte(
                         [
                             html.H2("Histograma"),
                             construir_histograma(serie_objetivo, serie_objetivo.name, construir_etiqueta_columna),
-                        ]
+                        ],
+                        style=REPORTE_HISTOGRAMA_STYLE,
                     ),
                     html.Div(
                         [
                             html.H2("Correlaciones lineales"),
                             construir_tabla_correlacion(correlaciones, construir_etiqueta_columna),
                         ],
+                        style=REPORTE_CORRELACIONES_STYLE,
                     ),
                 ],
                 style=REPORTE_RESUMEN_STYLE,
