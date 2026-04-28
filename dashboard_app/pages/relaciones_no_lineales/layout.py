@@ -1,6 +1,7 @@
 from dash import dcc, html
 
 from dashboard_app.callbacks.common import TITULO_CENTRADO_STYLE
+from dashboard_app.pages.routes import HOME_ROUTE
 from dashboard_app.pages.shared import (
     APP_PAGE_STYLE,
     DESCRIPCION_SECCION_STYLE,
@@ -25,7 +26,7 @@ def build_page():
     contexto_inicial = contextos[0]["key"] if contextos else None
     return html.Div(
         [
-            construir_links_secundarios(),
+            construir_links_secundarios([("Inicio", HOME_ROUTE)]),
             html.H1("Relaciones no lineales", style=TITULO_CENTRADO_STYLE),
             html.Div(
                 "Analisis profundo precomputado para explorar relaciones no lineales entre variables.",

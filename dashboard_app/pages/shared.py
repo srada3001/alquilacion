@@ -2,7 +2,7 @@ from dash import dcc, html
 
 from dashboard_app.callbacks.common import TITULO_CENTRADO_STYLE
 
-from dashboard_app.pages.routes import HOME_ROUTE, SERIES_TEMPORALES_ROUTE
+from dashboard_app.pages.routes import HOME_ROUTE
 
 APP_PAGE_STYLE = {
     "maxWidth": "1440px",
@@ -37,14 +37,6 @@ PAGE_LINKS_STYLE = {
     "marginBottom": "20px",
 }
 
-SECCION_IMAGEN_STYLE = {
-    "marginBottom": "24px",
-    "padding": "16px",
-    "border": "1px solid #d9d9d9",
-    "borderRadius": "12px",
-    "backgroundColor": "#fafafa",
-}
-
 IMAGEN_PREVIEW_STYLE = {
     "display": "block",
     "width": "100%",
@@ -72,11 +64,9 @@ def construir_link_boton(texto, href):
     return dcc.Link(texto, href=href, style=BUTTON_LINK_STYLE)
 
 
-def construir_links_secundarios():
+def construir_links_secundarios(enlaces=None):
+    enlaces = enlaces or [("Inicio", HOME_ROUTE)]
     return html.Div(
-        [
-            construir_link_boton("Inicio", HOME_ROUTE),
-            construir_link_boton("Series temporales", SERIES_TEMPORALES_ROUTE),
-        ],
+        [construir_link_boton(texto, href) for texto, href in enlaces],
         style=PAGE_LINKS_STYLE,
     )
