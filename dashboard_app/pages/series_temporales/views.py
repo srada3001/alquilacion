@@ -127,16 +127,11 @@ def construir_chip_filtro_variable(filtro):
     )
 
 
-def construir_chip_filtro_fecha(filtro):
+def construir_chip_filtro_periodo(filtro):
     texto = f"{str(filtro['inicio']).replace('T', ' ')} a {str(filtro['fin']).replace('T', ' ')}"
     return html.Div(
         [
             html.Span(texto),
-            html.Button(
-                "Eliminar",
-                id={"type": "retirar-filtro-fecha-btn", "value": filtro["id"]},
-                n_clicks=0,
-            ),
         ],
         style=BADGE_STYLE,
     )
@@ -196,7 +191,7 @@ def construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id, op
             )
 
     if not chips:
-        return html.Div("Contexto operacional: toda la data.")
+        return html.Div("Filtro por periodos: sin filtro.")
     return html.Div(chips, style=BADGE_CONTAINER_STYLE)
 
 

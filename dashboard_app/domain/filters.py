@@ -26,13 +26,17 @@ def combinar_mascaras(*mascaras):
 
 def normalizar_filtros_guardados(filtros_guardados):
     if isinstance(filtros_guardados, dict):
+        periodo = filtros_guardados.get("periodo")
+        if periodo is None:
+            fechas = list(filtros_guardados.get("fechas") or [])
+            periodo = fechas[0] if fechas else None
         return {
             "variables": list(filtros_guardados.get("variables") or []),
-            "fechas": list(filtros_guardados.get("fechas") or []),
+            "periodo": periodo,
         }
     return {
         "variables": list(filtros_guardados or []),
-        "fechas": [],
+        "periodo": None,
     }
 
 
@@ -40,13 +44,15 @@ def obtener_filtros_variable(filtros_guardados):
     return normalizar_filtros_guardados(filtros_guardados)["variables"]
 
 
-def obtener_filtros_fecha(filtros_guardados):
-    return normalizar_filtros_guardados(filtros_guardados)["fechas"]
+def obtener_filtro_periodo(filtros_guardados):
+    return normalizar_filtros_guardados(filtros_guardados)["periodo"]
 
 
-def construir_rango_fecha(filtro):
-    inicio_dt = pd.to_datetime(filtro.get("inicio"), errors="coerce")
-    fin_dt = pd.to_datetime(filtro.get("fin"), errors="coerce")
+def construir_rango_fecha(periodo):
+    if not periodo:
+        return None, None
+    inicio_dt = pd.to_datetime(periodo.get("inicio"), errors="coerce")
+    fin_dt = pd.to_datetime(periodo.get("fin"), errors="coerce")
     if pd.isna(inicio_dt) or pd.isna(fin_dt):
         return None, None
     if fin_dt < inicio_dt:
@@ -54,20 +60,15 @@ def construir_rango_fecha(filtro):
     return inicio_dt, fin_dt
 
 
-def construir_mascara_fechas_desde_df(df, filtros_fecha):
-    if df.empty or not filtros_fecha:
+def construir_mascara_periodo_desde_df(df, filtro_periodo):
+    if df.empty or not filtro_periodo:
         return None
 
-    mascara = pd.Series(False, index=df.index)
     indice = pd.to_datetime(df.index, errors="coerce")
-
-    for filtro in filtros_fecha:
-        inicio_dt, fin_dt = construir_rango_fecha(filtro)
-        if inicio_dt is None or fin_dt is None:
-            continue
-        mascara |= (indice >= inicio_dt) & (indice <= fin_dt)
-
-    return mascara
+    inicio_dt, fin_dt = construir_rango_fecha(filtro_periodo)
+    if inicio_dt is None or fin_dt is None:
+        return None
+    return (indice >= inicio_dt) & (indice <= fin_dt)
 
 
 def construir_mascara_variables_desde_df(df, filtros_variable):
@@ -100,26 +101,26 @@ def construir_mascara_variables_desde_df(df, filtros_variable):
 
 def construir_mascara_desde_df(df, filtros):
     filtros_variable = obtener_filtros_variable(filtros)
-    filtros_fecha = obtener_filtros_fecha(filtros)
+    filtro_periodo = obtener_filtro_periodo(filtros)
 
-    if df.empty or (not filtros_variable and not filtros_fecha):
+    if df.empty or (not filtros_variable and not filtro_periodo):
         return None
 
     mascara_variables = construir_mascara_variables_desde_df(df, filtros_variable)
-    mascara_fechas = construir_mascara_fechas_desde_df(df, filtros_fecha)
+    mascara_periodo = construir_mascara_periodo_desde_df(df, filtro_periodo)
 
     if mascara_variables is None:
-        return mascara_fechas
-    if mascara_fechas is None:
+        return mascara_periodo
+    if mascara_periodo is None:
         return mascara_variables
-    return combinar_mascaras(mascara_variables, mascara_fechas)
+    return combinar_mascaras(mascara_variables, mascara_periodo)
 
 
 def construir_mascara_rechazo_desde_df(df, filtros):
     filtros_variable = obtener_filtros_variable(filtros)
-    filtros_fecha = obtener_filtros_fecha(filtros)
+    filtro_periodo = obtener_filtro_periodo(filtros)
 
-    if df.empty or (not filtros_variable and not filtros_fecha):
+    if df.empty or (not filtros_variable and not filtro_periodo):
         return None
 
     rechazo = pd.Series(False, index=df.index)
@@ -144,8 +145,8 @@ def construir_mascara_rechazo_desde_df(df, filtros):
         elif operador == "<=":
             rechazo |= validos & ~(serie <= valor)
 
-    mascara_fechas = construir_mascara_fechas_desde_df(df, filtros_fecha)
-    if mascara_fechas is not None:
-        rechazo |= ~mascara_fechas
+    mascara_periodo = construir_mascara_periodo_desde_df(df, filtro_periodo)
+    if mascara_periodo is not None:
+        rechazo |= ~mascara_periodo
 
     return rechazo

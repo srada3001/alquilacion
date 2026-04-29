@@ -7,7 +7,7 @@ from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
 from dashboard_app.domain.filters import (
     construir_rango_fecha,
     normalizar_filtros_guardados,
-    obtener_filtros_fecha,
+    obtener_filtro_periodo,
 )
 from dashboard_app.domain.operation_events import obtener_eventos_operacion, obtener_operaciones
 
@@ -73,6 +73,14 @@ GRUPOS_VARIABLES = {
 MODO_OPERACION_OPCIONES = [
     {"label": "Toda la data", "value": "toda"},
     {"label": "Operación completa", "value": "completa"},
+]
+
+FILTRO_PERIODO_OPCIONES = [
+    {"label": "OperaciÃ³n completa", "value": "completa"},
+    {"label": "Arranque", "value": "arranque"},
+    {"label": "Parada", "value": "parada"},
+    {"label": "OperaciÃ³n especÃ­fica", "value": "operacion"},
+    {"label": "Fecha en particular", "value": "fecha"},
 ]
 
 UMBRAL_REESCALADO = pd.Timedelta(days=365)
@@ -220,34 +228,28 @@ def obtener_freq_desde_estado_grafico(estado_grafico):
     )
 
 
-def obtener_freq_desde_filtros_fecha(filtros_guardados):
-    filtros_fecha = obtener_filtros_fecha(normalizar_filtros_guardados(filtros_guardados))
-    if not filtros_fecha:
+def obtener_freq_desde_filtro_periodo(filtros_guardados):
+    filtro_periodo = obtener_filtro_periodo(normalizar_filtros_guardados(filtros_guardados))
+    if not filtro_periodo:
         return None
 
-    frecuencias = []
-    for filtro in filtros_fecha:
-        inicio_dt, fin_dt = construir_rango_fecha(filtro)
-        if inicio_dt is None or fin_dt is None:
-            continue
-        frecuencias.append(resolver_freq_por_periodo(inicio_dt, fin_dt))
-
-    if not frecuencias:
+    inicio_dt, fin_dt = construir_rango_fecha(filtro_periodo)
+    if inicio_dt is None or fin_dt is None:
         return None
-    return "5min" if all(freq == "5min" for freq in frecuencias) else "1h"
+    return resolver_freq_por_periodo(inicio_dt, fin_dt)
 
 
 def obtener_freq_efectiva(
     estado_grafico,
     filtros_guardados=None,
-    modo_operacion="toda",
+    modo_operacion=None,
     arranque_id=None,
     parada_id=None,
     operacion_id=None,
 ):
     if arranque_id or parada_id or operacion_id:
         return "5min"
-    freq_filtros = obtener_freq_desde_filtros_fecha(filtros_guardados)
+    freq_filtros = obtener_freq_desde_filtro_periodo(filtros_guardados)
     if freq_filtros is not None:
         return freq_filtros
     return obtener_freq_desde_estado_grafico(estado_grafico)
@@ -317,6 +319,28 @@ def construir_opciones_operaciones():
     return opciones
 
 
+def construir_opciones_periodo_detalle(tipo_periodo):
+    if tipo_periodo == "arranque":
+        return construir_opciones_arranques()
+    if tipo_periodo == "parada":
+        return construir_opciones_paradas()
+    if tipo_periodo == "operacion":
+        return construir_opciones_operaciones()
+    return []
+
+
+def resolver_contexto_operacion_desde_periodo(tipo_periodo, detalle_periodo):
+    if tipo_periodo == "completa":
+        return "completa", None, None, None
+    if tipo_periodo == "arranque" and detalle_periodo:
+        return None, detalle_periodo, None, None
+    if tipo_periodo == "parada" and detalle_periodo:
+        return None, None, detalle_periodo, None
+    if tipo_periodo == "operacion" and detalle_periodo:
+        return None, None, None, detalle_periodo
+    return None, None, None, None
+
+
 @lru_cache(maxsize=2)
 def get_operational_reference_index():
     df_5min = load_combined_dataset("5min")
@@ -342,7 +366,7 @@ def get_downtime_mask_5min():
 
 def construir_mascara_contexto_operacion(
     df,
-    modo_operacion="toda",
+    modo_operacion=None,
     arranque_id=None,
     parada_id=None,
     operacion_id=None,

@@ -2,10 +2,7 @@ from dash import dcc, html
 
 from dashboard_app.callbacks.common import (
     ACCION_AGREGAR_STYLE,
-    MODO_OPERACION_OPCIONES,
-    construir_opciones_arranques,
-    construir_opciones_operaciones,
-    construir_opciones_paradas,
+    FILTRO_PERIODO_OPCIONES,
 )
 from dashboard_app.data import formatear_nombre_fase
 from dashboard_app.pages.shared import ESTADO_IMAGEN_STYLE
@@ -34,9 +31,9 @@ FILTROS_FECHA_STYLE = {
     "marginBottom": "16px",
 }
 
-CONTEXTO_OPERACION_STYLE = {
+FILTRO_PERIODO_STYLE = {
     "display": "grid",
-    "gridTemplateColumns": "minmax(220px, auto) minmax(240px, 1fr) minmax(240px, 1fr) minmax(240px, 1fr)",
+    "gridTemplateColumns": "minmax(240px, 1fr) minmax(320px, 2fr)",
     "gap": "12px",
     "alignItems": "end",
     "marginBottom": "16px",
@@ -100,92 +97,41 @@ def build_shared_variable_controls(fases):
             [
                 html.Div(
                     [
-                        html.Div("Modo de datos", style={"fontWeight": "600", "marginBottom": "8px"}),
-                        dcc.RadioItems(
-                            id="modo-operacion-radio",
-                            options=MODO_OPERACION_OPCIONES,
-                            value="toda",
-                            inline=True,
-                        ),
-                    ]
-                ),
-                html.Div(
-                    [
-                        html.Div("Filtro por arranque", style={"fontWeight": "600", "marginBottom": "8px"}),
+                        html.Div("Filtro por periodos", style={"fontWeight": "600", "marginBottom": "8px"}),
                         dcc.Dropdown(
-                            id="filtro-arranque-dropdown",
-                            options=construir_opciones_arranques(),
+                            id="filtro-periodo-tipo-dropdown",
+                            options=FILTRO_PERIODO_OPCIONES,
                             value=None,
-                            placeholder="Seleccionar arranque",
+                            placeholder="Sin filtro de periodo",
                             clearable=True,
                         ),
                     ]
                 ),
                 html.Div(
                     [
-                        html.Div("Filtro por parada", style={"fontWeight": "600", "marginBottom": "8px"}),
-                        dcc.Dropdown(
-                            id="filtro-parada-dropdown",
-                            options=construir_opciones_paradas(),
-                            value=None,
-                            placeholder="Seleccionar parada",
-                            clearable=True,
+                        html.Div(
+                            id="filtro-periodo-detalle-label",
+                            style={"fontWeight": "600", "marginBottom": "8px", "display": "none"},
                         ),
-                    ]
-                ),
-                html.Div(
-                    [
-                        html.Div("Filtro por operacion", style={"fontWeight": "600", "marginBottom": "8px"}),
                         dcc.Dropdown(
-                            id="filtro-operacion-dropdown",
-                            options=construir_opciones_operaciones(),
+                            id="filtro-periodo-detalle-dropdown",
+                            options=[],
                             value=None,
-                            placeholder="Seleccionar operacion",
+                            placeholder="Seleccionar periodo",
                             clearable=True,
+                            style={"display": "none"},
                         ),
                     ]
                 ),
             ],
-            style=CONTEXTO_OPERACION_STYLE,
+            style=FILTRO_PERIODO_STYLE,
         ),
-        html.Details(
+        html.Div(
             [
-                html.Summary(
-                    "Filtros por variable",
-                    style={"cursor": "pointer", "fontWeight": "600"},
-                ),
                 html.Div(
-                    [
-                        dcc.Dropdown(id="filtro-variable-crear-dropdown", options=[], value=None, placeholder="Variable"),
-                        dcc.Dropdown(
-                            id="filtro-operador-crear-dropdown",
-                            options=[
-                                {"label": "Mayor que", "value": ">"},
-                                {"label": "Mayor o igual que", "value": ">="},
-                                {"label": "Menor que", "value": "<"},
-                                {"label": "Menor o igual que", "value": "<="},
-                            ],
-                            value=">",
-                            placeholder="Operador",
-                        ),
-                        dcc.Input(
-                            id="filtro-valor-crear-input",
-                            type="number",
-                            placeholder="Valor del filtro",
-                        ),
-                        html.Button("Anadir", id="anadir-filtro-btn", n_clicks=0),
-                    ],
-                    style=FILTROS_STYLE,
-                ),
-            ],
-            style={"marginBottom": "16px"},
-        ),
-        html.Div(id="filtros-variable-container"),
-        html.Details(
-            [
-                html.Summary(
-                    "Filtros por fecha",
-                    style={"cursor": "pointer", "fontWeight": "600"},
+                    "Fecha en particular",
+                    id="filtro-periodo-fecha-titulo",
+                    style={"fontWeight": "600", "marginBottom": "8px"},
                 ),
                 html.Div(
                     [
@@ -230,10 +176,44 @@ def build_shared_variable_controls(fases):
                     style=FILTROS_FECHA_STYLE,
                 ),
             ],
+            id="filtro-periodo-fecha-container",
+            style={"marginBottom": "16px", "display": "none"},
+        ),
+        html.Div(
+            [
+                html.Div(
+                    "Filtros por variable",
+                    style={"fontWeight": "600", "marginBottom": "8px"},
+                ),
+                html.Div(
+                    [
+                        dcc.Dropdown(id="filtro-variable-crear-dropdown", options=[], value=None, placeholder="Variable"),
+                        dcc.Dropdown(
+                            id="filtro-operador-crear-dropdown",
+                            options=[
+                                {"label": "Mayor que", "value": ">"},
+                                {"label": "Mayor o igual que", "value": ">="},
+                                {"label": "Menor que", "value": "<"},
+                                {"label": "Menor o igual que", "value": "<="},
+                            ],
+                            value=">",
+                            placeholder="Operador",
+                        ),
+                        dcc.Input(
+                            id="filtro-valor-crear-input",
+                            type="number",
+                            placeholder="Valor del filtro",
+                        ),
+                        construir_boton_agregar("anadir-filtro-btn"),
+                    ],
+                    style=FILTROS_STYLE,
+                ),
+            ],
             style={"marginBottom": "16px"},
         ),
-        html.Div(id="filtros-fecha-container"),
+        html.Div(id="filtros-variable-container"),
+        html.Div(id="filtro-periodo-container"),
         html.Div(id="filtros-resumen"),
         dcc.Store(id="estado-grafico-store", data={"freq": "1h", "range": None}),
-        dcc.Store(id="filtros-store", data={"variables": [], "fechas": []}),
+        dcc.Store(id="filtros-store", data={"variables": [], "periodo": None}),
     ]

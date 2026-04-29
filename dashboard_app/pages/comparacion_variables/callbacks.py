@@ -1,7 +1,10 @@
 from dash import Input, Output, html
 import pandas as pd
 
-from dashboard_app.callbacks.common import construir_etiqueta_columna
+from dashboard_app.callbacks.common import (
+    construir_etiqueta_columna,
+    resolver_contexto_operacion_desde_periodo,
+)
 from dashboard_app.pages.series_temporales.callbacks import cargar_dataframe_filtrado
 from dashboard_app.pages.series_temporales.views import construir_bloque_comparacion_variables
 
@@ -17,20 +20,20 @@ def register_callbacks(app):
         Input("estado-grafico-store", "data"),
         Input("variables-seleccionadas-store", "data"),
         Input("filtros-store", "data"),
-        Input("modo-operacion-radio", "value"),
-        Input("filtro-arranque-dropdown", "value"),
-        Input("filtro-parada-dropdown", "value"),
-        Input("filtro-operacion-dropdown", "value"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        Input("filtro-periodo-detalle-dropdown", "value"),
     )
     def actualizar_comparaciones_por_pares(
         estado_grafico,
         variables_seleccionadas,
         filtros_guardados,
-        modo_operacion,
-        arranque_id,
-        parada_id,
-        operacion_id,
+        tipo_periodo,
+        detalle_periodo,
     ):
+        modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
+            tipo_periodo,
+            detalle_periodo,
+        )
         variables = list(variables_seleccionadas or [])
         if len(variables) < 2:
             return html.Div(

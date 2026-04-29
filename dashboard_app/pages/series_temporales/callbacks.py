@@ -7,6 +7,7 @@ from dashboard_app.callbacks.common import (
     cargar_dataset_para_columnas,
     construir_etiqueta_columna,
     construir_mascara_contexto_operacion,
+    construir_opciones_periodo_detalle,
     construir_opciones_variables_por_fase,
     expandir_valor_variable,
     normalizar_lista_unica,
@@ -15,13 +16,14 @@ from dashboard_app.callbacks.common import (
     obtener_freq_efectiva,
     obtener_rango_desde_estado_grafico,
     obtener_rango_desde_relayout,
+    resolver_contexto_operacion_desde_periodo,
 )
 from dashboard_app.data import obtener_unidad_columna
 from dashboard_app.domain.filters import (
     combinar_mascaras,
     construir_mascara_desde_df,
     normalizar_filtros_guardados,
-    obtener_filtros_fecha,
+    obtener_filtro_periodo,
     obtener_filtros_variable,
 )
 from dashboard_app.pages.series_temporales.domain import (
@@ -30,7 +32,7 @@ from dashboard_app.pages.series_temporales.domain import (
 from dashboard_app.pages.series_temporales.views import (
     construir_bloque_resultado,
     construir_chip_contexto_operacion,
-    construir_chip_filtro_fecha,
+    construir_chip_filtro_periodo,
     construir_chip_filtro_variable,
     construir_chip_variable,
     construir_imagen_fase,
@@ -40,6 +42,13 @@ HORA_REGEX = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 UNIDAD_SIN_DEFINIR = "Sin unidad definida"
 UNIDAD_NORMALIZADA = "Valor normalizado"
 EJE_RESERVA_POR_LADO = 0.06
+VISTAS_TEMPORALES = {
+    "vista_1": [
+        "horno | FI-1238-ALQUILATO",
+        "horno | FI-1666A",
+        "horno | TI-1497",
+    ]
+}
 
 
 def normalizar_hora(hora, hora_por_defecto):
@@ -53,30 +62,48 @@ def construir_fecha_hora(fecha, hora, hora_por_defecto):
     return f"{fecha}T{normalizar_hora(hora, hora_por_defecto)}"
 
 
+def es_id_patron(disparador, tipo):
+    return hasattr(disparador, "get") and disparador.get("type") == tipo
+
+
+def hay_contexto_operacion(modo_operacion=None, arranque_id=None, parada_id=None, operacion_id=None):
+    return modo_operacion == "completa" or bool(arranque_id) or bool(parada_id) or bool(operacion_id)
+
+
 def construir_mascara_global(
     freq,
     filtros,
     columnas_base=None,
-    modo_operacion="toda",
+    modo_operacion=None,
     arranque_id=None,
     parada_id=None,
     operacion_id=None,
 ):
     filtros_normalizados = normalizar_filtros_guardados(filtros)
-    filtros_fecha = obtener_filtros_fecha(filtros_normalizados)
+    filtro_periodo = obtener_filtro_periodo(filtros_normalizados)
     columnas_filtro = [
         filtro["columna"]
         for filtro in obtener_filtros_variable(filtros_normalizados)
         if filtro.get("columna")
     ]
     columnas_requeridas = list(columnas_base or []) + columnas_filtro
-    if not columnas_requeridas and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id and not operacion_id:
+    if not columnas_requeridas and not filtro_periodo and not hay_contexto_operacion(
+        modo_operacion,
+        arranque_id,
+        parada_id,
+        operacion_id,
+    ):
         return None
 
     df_filtros = cargar_dataset_para_columnas(
         freq,
         columnas_requeridas,
-        cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id) or bool(operacion_id),
+        cargar_todo_si_vacio=bool(filtro_periodo) or hay_contexto_operacion(
+            modo_operacion,
+            arranque_id,
+            parada_id,
+            operacion_id,
+        ),
     )
     return combinar_mascaras(
         construir_mascara_desde_df(df_filtros, filtros_normalizados),
@@ -88,7 +115,7 @@ def cargar_dataframe_filtrado(
     estado_grafico,
     columnas,
     filtros_guardados,
-    modo_operacion="toda",
+    modo_operacion=None,
     arranque_id=None,
     parada_id=None,
     operacion_id=None,
@@ -115,7 +142,12 @@ def cargar_dataframe_filtrado(
     df_combinado = cargar_dataset_para_columnas(
         freq,
         columnas_requeridas,
-        cargar_todo_si_vacio=modo_operacion != "toda" or bool(arranque_id) or bool(parada_id) or bool(operacion_id),
+        cargar_todo_si_vacio=hay_contexto_operacion(
+            modo_operacion,
+            arranque_id,
+            parada_id,
+            operacion_id,
+        ),
         rango_tiempo=rango_visible,
     )
     mascara = combinar_mascaras(
@@ -133,7 +165,8 @@ def construir_clave_eje(columna, normalizar=False):
         return UNIDAD_NORMALIZADA
 
     unidad = obtener_unidad_columna(columna)
-    return unidad or UNIDAD_SIN_DEFINIR
+    unidad_resuelta = unidad or UNIDAD_SIN_DEFINIR
+    return f"{construir_etiqueta_columna(columna)} [{unidad_resuelta}]"
 
 
 def resolver_configuracion_ejes(unidades):
@@ -211,27 +244,82 @@ def register_callbacks(app):
         return construir_imagen_fase(fase)
 
     @app.callback(
+        Output("filtro-periodo-detalle-label", "children"),
+        Output("filtro-periodo-detalle-label", "style"),
+        Output("filtro-periodo-detalle-dropdown", "options"),
+        Output("filtro-periodo-detalle-dropdown", "value"),
+        Output("filtro-periodo-detalle-dropdown", "placeholder"),
+        Output("filtro-periodo-detalle-dropdown", "style"),
+        Output("filtro-periodo-fecha-container", "style"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        State("filtro-periodo-detalle-dropdown", "value"),
+    )
+    def actualizar_controles_periodo(tipo_periodo, detalle_actual):
+        estilo_oculto = {"display": "none"}
+        estilo_visible = {"display": "block"}
+
+        if tipo_periodo == "fecha":
+            return (
+                "",
+                estilo_oculto,
+                [],
+                None,
+                "Seleccionar periodo",
+                estilo_oculto,
+                {"marginBottom": "16px", "display": "block"},
+            )
+
+        if tipo_periodo in {"arranque", "parada", "operacion"}:
+            opciones = construir_opciones_periodo_detalle(tipo_periodo)
+            valores_validos = {opcion["value"] for opcion in opciones}
+            valor = detalle_actual if detalle_actual in valores_validos else None
+            etiquetas = {
+                "arranque": "Arranque",
+                "parada": "Parada",
+                "operacion": "Operaci\u00f3n espec\u00edfica",
+            }
+            return (
+                etiquetas[tipo_periodo],
+                {"fontWeight": "600", "marginBottom": "8px", "display": "block"},
+                opciones,
+                valor,
+                f"Seleccionar {etiquetas[tipo_periodo].lower()}",
+                estilo_visible,
+                {"marginBottom": "16px", "display": "none"},
+            )
+
+        return (
+            "",
+            estilo_oculto,
+            [],
+            None,
+            "Seleccionar periodo",
+            estilo_oculto,
+            {"marginBottom": "16px", "display": "none"},
+        )
+
+    @app.callback(
         Output("seleccion-variables-dropdown", "options"),
         Output("seleccion-variables-dropdown", "value"),
         Input("estado-grafico-store", "data"),
         Input("filtros-store", "data"),
-        Input("modo-operacion-radio", "value"),
-        Input("filtro-arranque-dropdown", "value"),
-        Input("filtro-parada-dropdown", "value"),
-        Input("filtro-operacion-dropdown", "value"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        Input("filtro-periodo-detalle-dropdown", "value"),
         Input("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
     )
     def actualizar_variables_selector(
         estado_grafico,
         filtros_guardados,
-        modo_operacion,
-        arranque_id,
-        parada_id,
-        operacion_id,
+        tipo_periodo,
+        detalle_periodo,
         fase,
         valor_actual,
     ):
+        modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
+            tipo_periodo,
+            detalle_periodo,
+        )
         freq = obtener_freq_efectiva(
             estado_grafico,
             filtros_guardados,
@@ -250,30 +338,30 @@ def register_callbacks(app):
         Input({"type": "retirar-variable-btn", "value": ALL}, "n_clicks"),
         State("estado-grafico-store", "data"),
         State("filtros-store", "data"),
-        State("modo-operacion-radio", "value"),
-        State("filtro-arranque-dropdown", "value"),
-        State("filtro-parada-dropdown", "value"),
-        State("filtro-operacion-dropdown", "value"),
+        State("filtro-periodo-tipo-dropdown", "value"),
+        State("filtro-periodo-detalle-dropdown", "value"),
         State("seleccion-fases-dropdown", "value"),
         State("seleccion-variables-dropdown", "value"),
         State("variables-seleccionadas-store", "data"),
         prevent_initial_call=True,
     )
     def actualizar_variables_agregadas(
-        _,
-        __,
+        anadir_clicks,
+        clicks_retirar,
         estado_grafico,
         filtros_guardados,
-        modo_operacion,
-        arranque_id,
-        parada_id,
-        operacion_id,
+        tipo_periodo,
+        detalle_periodo,
         fase,
         valor_variable,
         variables_agregadas,
     ):
         variables_agregadas = list(variables_agregadas or [])
         disparador = callback_context.triggered_id
+        modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
+            tipo_periodo,
+            detalle_periodo,
+        )
         freq = obtener_freq_efectiva(
             estado_grafico,
             filtros_guardados,
@@ -288,11 +376,28 @@ def register_callbacks(app):
             variables_agregadas.extend(nuevas)
             return normalizar_lista_unica(variables_agregadas)
 
-        if isinstance(disparador, dict) and disparador.get("type") == "retirar-variable-btn":
+        if es_id_patron(disparador, "retirar-variable-btn"):
+            if not any((clicks_retirar or [])):
+                return variables_agregadas
             variable = disparador["value"]
             return [v for v in variables_agregadas if v != variable]
 
         return variables_agregadas
+
+    @app.callback(
+        Output("variables-seleccionadas-store", "data", allow_duplicate=True),
+        Output("vistas-temporales-dropdown", "value"),
+        Input("vistas-temporales-dropdown", "value"),
+        State("variables-seleccionadas-store", "data"),
+        prevent_initial_call=True,
+    )
+    def aplicar_vista_temporal(vista_temporal, variables_agregadas):
+        if not vista_temporal:
+            return no_update, None
+
+        variables_agregadas = list(variables_agregadas or [])
+        variables_vista = VISTAS_TEMPORALES.get(vista_temporal, [])
+        return normalizar_lista_unica(variables_agregadas + variables_vista), None
 
     @app.callback(
         Output("variables-seleccionadas-container", "children"),
@@ -331,8 +436,8 @@ def register_callbacks(app):
         Input("anadir-filtro-btn", "n_clicks"),
         Input("anadir-filtro-fecha-btn", "n_clicks"),
         Input({"type": "retirar-filtro-variable-btn", "value": ALL}, "n_clicks"),
-        Input({"type": "retirar-filtro-fecha-btn", "value": ALL}, "n_clicks"),
-        State("estado-grafico-store", "data"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        Input("filtro-periodo-detalle-dropdown", "value"),
         State("filtro-variable-crear-dropdown", "value"),
         State("filtro-operador-crear-dropdown", "value"),
         State("filtro-valor-crear-input", "value"),
@@ -347,8 +452,8 @@ def register_callbacks(app):
         _,
         __,
         ___,
-        ____,
-        estado_grafico,
+        tipo_periodo,
+        detalle_periodo,
         valor_variable,
         operador,
         valor,
@@ -361,11 +466,8 @@ def register_callbacks(app):
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
         disparador = callback_context.triggered_id
         filtros_variable = list(obtener_filtros_variable(filtros_guardados))
-        filtros_fecha = list(obtener_filtros_fecha(filtros_guardados))
-        siguiente_id = max(
-            (filtro.get("id", -1) for filtro in filtros_variable + filtros_fecha),
-            default=-1,
-        ) + 1
+        filtro_periodo = obtener_filtro_periodo(filtros_guardados)
+        siguiente_id = max((filtro.get("id", -1) for filtro in filtros_variable), default=-1) + 1
 
         if disparador == "anadir-filtro-btn":
             if valor_variable and operador and valor is not None:
@@ -379,30 +481,35 @@ def register_callbacks(app):
                 )
                 return {
                     "variables": filtros_variable,
-                    "fechas": filtros_fecha,
+                    "periodo": filtro_periodo,
                 }, None, fecha_inicio, hora_inicio, fecha_fin, hora_fin
             return filtros_guardados, valor, fecha_inicio, hora_inicio, fecha_fin, hora_fin
+
+        if isinstance(disparador, str) and disparador in {
+            "filtro-periodo-tipo-dropdown",
+            "filtro-periodo-detalle-dropdown",
+        }:
+            return {
+                "variables": filtros_variable,
+                "periodo": None,
+            }, valor, fecha_inicio, hora_inicio, fecha_fin, hora_fin
 
         if disparador == "anadir-filtro-fecha-btn":
             inicio = construir_fecha_hora(fecha_inicio, hora_inicio, "00:00")
             fin = construir_fecha_hora(fecha_fin, hora_fin, "23:59")
-            if inicio and fin:
+            if tipo_periodo == "fecha" and inicio and fin:
                 if fin < inicio:
                     inicio, fin = fin, inicio
-                filtros_fecha.append(
-                    {
-                        "id": siguiente_id,
-                        "inicio": inicio,
-                        "fin": fin,
-                    }
-                )
                 return {
                     "variables": filtros_variable,
-                    "fechas": filtros_fecha,
+                    "periodo": {
+                        "inicio": inicio,
+                        "fin": fin,
+                    },
                 }, valor, None, "00:00", None, "23:59"
             return filtros_guardados, valor, fecha_inicio, hora_inicio, fecha_fin, hora_fin
 
-        if isinstance(disparador, dict) and disparador.get("type") == "retirar-filtro-variable-btn":
+        if es_id_patron(disparador, "retirar-filtro-variable-btn"):
             restantes = [
                 filtro
                 for filtro in filtros_variable
@@ -410,46 +517,36 @@ def register_callbacks(app):
             ]
             return {
                 "variables": restantes,
-                "fechas": filtros_fecha,
-            }, valor, fecha_inicio, hora_inicio, fecha_fin, hora_fin
-
-        if isinstance(disparador, dict) and disparador.get("type") == "retirar-filtro-fecha-btn":
-            restantes = [
-                filtro
-                for filtro in filtros_fecha
-                if filtro.get("id") != disparador["value"]
-            ]
-            return {
-                "variables": filtros_variable,
-                "fechas": restantes,
+                "periodo": filtro_periodo,
             }, valor, fecha_inicio, hora_inicio, fecha_fin, hora_fin
 
         return filtros_guardados, valor, fecha_inicio, hora_inicio, fecha_fin, hora_fin
 
     @app.callback(
         Output("filtros-variable-container", "children"),
-        Output("filtros-fecha-container", "children"),
+        Output("filtro-periodo-container", "children"),
         Output("filtros-resumen", "children"),
         Input("estado-grafico-store", "data"),
         Input("filtros-store", "data"),
         Input("variables-seleccionadas-store", "data"),
-        Input("modo-operacion-radio", "value"),
-        Input("filtro-arranque-dropdown", "value"),
-        Input("filtro-parada-dropdown", "value"),
-        Input("filtro-operacion-dropdown", "value"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        Input("filtro-periodo-detalle-dropdown", "value"),
     )
     def mostrar_filtros(
         estado_grafico,
         filtros_guardados,
         variables_seleccionadas,
-        modo_operacion,
-        arranque_id,
-        parada_id,
-        operacion_id,
+        tipo_periodo,
+        detalle_periodo,
     ):
         filtros_guardados = normalizar_filtros_guardados(filtros_guardados)
         filtros_variable = obtener_filtros_variable(filtros_guardados)
-        filtros_fecha = obtener_filtros_fecha(filtros_guardados)
+        filtro_periodo = obtener_filtro_periodo(filtros_guardados)
+        modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
+            tipo_periodo,
+            detalle_periodo,
+        )
+        chips_contexto = construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id, operacion_id)
 
         if filtros_variable:
             chips_variable = html.Div(
@@ -459,13 +556,15 @@ def register_callbacks(app):
         else:
             chips_variable = html.Div("No hay filtros por variable anadidos.")
 
-        if filtros_fecha:
-            chips_fecha = html.Div(
-                [construir_chip_filtro_fecha(filtro) for filtro in filtros_fecha],
+        if tipo_periodo == "fecha" and filtro_periodo:
+            chips_periodo = html.Div(
+                [construir_chip_filtro_periodo(filtro_periodo)],
                 style=BADGE_CONTAINER_STYLE,
             )
+        elif hay_contexto_operacion(modo_operacion, arranque_id, parada_id, operacion_id):
+            chips_periodo = chips_contexto
         else:
-            chips_fecha = html.Div("No hay filtros por fecha anadidos.")
+            chips_periodo = html.Div("No hay filtro de periodo activo.")
 
         freq = obtener_freq_efectiva(
             estado_grafico,
@@ -479,23 +578,27 @@ def register_callbacks(app):
         columnas_requeridas = list(variables_seleccionadas or []) + [
             filtro["columna"] for filtro in filtros_variable if filtro.get("columna")
         ]
-        chips_contexto = construir_chip_contexto_operacion(modo_operacion, arranque_id, parada_id, operacion_id)
-        if not filtros_variable and not filtros_fecha and modo_operacion == "toda" and not arranque_id and not parada_id and not operacion_id:
+        if not filtros_variable and not filtro_periodo and not hay_contexto_operacion(
+            modo_operacion,
+            arranque_id,
+            parada_id,
+            operacion_id,
+        ):
             return (
                 chips_variable,
-                chips_fecha,
-                html.Div(
-                    [
-                        chips_contexto,
-                        html.Div("Muestras eliminadas: 0 (0.00% del dataframe total)."),
-                    ]
-                ),
+                chips_periodo,
+                html.Div("Muestras eliminadas: 0 (0.00% del dataframe total)."),
             )
 
         df_combinado = cargar_dataset_para_columnas(
             freq,
             columnas_requeridas,
-            cargar_todo_si_vacio=bool(filtros_fecha) or modo_operacion != "toda" or bool(arranque_id) or bool(parada_id) or bool(operacion_id),
+            cargar_todo_si_vacio=bool(filtro_periodo) or hay_contexto_operacion(
+                modo_operacion,
+                arranque_id,
+                parada_id,
+                operacion_id,
+            ),
             rango_tiempo=rango_visible,
         )
         total = len(df_combinado.index)
@@ -510,13 +613,12 @@ def register_callbacks(app):
 
         resumen = html.Div(
             [
-                chips_contexto,
                 html.Div(
                     f"Muestras eliminadas: {eliminadas} ({porcentaje:.2f}% {alcance})."
                 ),
             ]
         )
-        return chips_variable, chips_fecha, resumen
+        return chips_variable, chips_periodo, resumen
 
     @app.callback(
         Output("estado-grafico-store", "data", allow_duplicate=True),
@@ -549,25 +651,25 @@ def register_callbacks(app):
         Input("normalizar-checklist", "value"),
         Input("variables-seleccionadas-store", "data"),
         Input("filtros-store", "data"),
-        Input("modo-operacion-radio", "value"),
-        Input("filtro-arranque-dropdown", "value"),
-        Input("filtro-parada-dropdown", "value"),
-        Input("filtro-operacion-dropdown", "value"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        Input("filtro-periodo-detalle-dropdown", "value"),
     )
     def actualizar_grafico(
         estado_grafico,
         normalizar_opciones,
         variables_seleccionadas,
         filtros_guardados,
-        modo_operacion,
-        arranque_id,
-        parada_id,
-        operacion_id,
+        tipo_periodo,
+        detalle_periodo,
     ):
         columnas = list(variables_seleccionadas or [])
         if not columnas:
             return go.Figure()
 
+        modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
+            tipo_periodo,
+            detalle_periodo,
+        )
         df_grafico = cargar_dataframe_filtrado(
             estado_grafico,
             columnas,
@@ -616,7 +718,12 @@ def register_callbacks(app):
             **layout_ejes,
         )
         rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
-        if rango_visible is not None and modo_operacion == "toda" and not arranque_id and not parada_id and not operacion_id:
+        if rango_visible is not None and not hay_contexto_operacion(
+            modo_operacion,
+            arranque_id,
+            parada_id,
+            operacion_id,
+        ):
             fig.update_layout(xaxis_range=rango_visible)
         return fig
 
@@ -640,16 +747,18 @@ def register_callbacks(app):
         Output("report-container", "children", allow_duplicate=True),
         Input("report-variable-dropdown", "value"),
         Input("filtros-store", "data"),
-        Input("modo-operacion-radio", "value"),
-        Input("filtro-arranque-dropdown", "value"),
-        Input("filtro-parada-dropdown", "value"),
-        Input("filtro-operacion-dropdown", "value"),
+        Input("filtro-periodo-tipo-dropdown", "value"),
+        Input("filtro-periodo-detalle-dropdown", "value"),
         prevent_initial_call=True,
     )
-    def actualizar_reporte(columna_reporte, filtros_guardados, modo_operacion, arranque_id, parada_id, operacion_id):
+    def actualizar_reporte(columna_reporte, filtros_guardados, tipo_periodo, detalle_periodo):
         if not columna_reporte:
             return []
 
+        modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
+            tipo_periodo,
+            detalle_periodo,
+        )
         mascara_global = construir_mascara_global(
             "1h",
             filtros_guardados,
