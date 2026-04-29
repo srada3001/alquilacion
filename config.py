@@ -35,3 +35,7 @@ def get_log_path(fase):
 
 def get_summary_path(fase):
     return os.path.join(DATA_PATH, SUMMARIES_FOLDER, f"{fase}{SUMMARY_EXTENSION}")
+
+
+def get_saved_views_path(nombre="saved_views.json"):
+    return os.path.join(DATA_PATH, nombre)

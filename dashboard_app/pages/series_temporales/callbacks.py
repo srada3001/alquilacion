@@ -1,4 +1,5 @@
 from dash import ALL, Input, Output, State, callback_context, html, no_update
+import pandas as pd
 import plotly.graph_objects as go
 import re
 
@@ -41,14 +42,7 @@ from dashboard_app.pages.series_temporales.views import (
 HORA_REGEX = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d$")
 UNIDAD_SIN_DEFINIR = "Sin unidad definida"
 UNIDAD_NORMALIZADA = "Valor normalizado"
-EJE_RESERVA_POR_LADO = 0.06
-VISTAS_TEMPORALES = {
-    "vista_1": [
-        "horno | FI-1238-ALQUILATO",
-        "horno | FI-1666A",
-        "horno | TI-1497",
-    ]
-}
+EJE_RESERVA_POR_LADO = 0.09
 
 
 def normalizar_hora(hora, hora_por_defecto):
@@ -160,13 +154,38 @@ def cargar_dataframe_filtrado(
     return df_combinado
 
 
+def completar_indice_temporal(df, freq, rango_tiempo=None):
+    if df.empty:
+        return df
+
+    inicio = df.index.min()
+    fin = df.index.max()
+    if rango_tiempo and len(rango_tiempo) >= 2:
+        inicio_rango = pd.to_datetime(rango_tiempo[0], errors="coerce")
+        fin_rango = pd.to_datetime(rango_tiempo[1], errors="coerce")
+        if not pd.isna(inicio_rango) and not pd.isna(fin_rango):
+            if fin_rango < inicio_rango:
+                inicio_rango, fin_rango = fin_rango, inicio_rango
+            inicio = min(inicio, inicio_rango)
+            fin = max(fin, fin_rango)
+
+    if pd.isna(inicio) or pd.isna(fin):
+        return df
+
+    indice_completo = pd.date_range(
+        start=inicio.floor(freq),
+        end=fin.ceil(freq),
+        freq=freq,
+    )
+    return df.reindex(indice_completo)
+
+
 def construir_clave_eje(columna, normalizar=False):
     if normalizar:
         return UNIDAD_NORMALIZADA
 
     unidad = obtener_unidad_columna(columna)
-    unidad_resuelta = unidad or UNIDAD_SIN_DEFINIR
-    return f"{construir_etiqueta_columna(columna)} [{unidad_resuelta}]"
+    return unidad or UNIDAD_SIN_DEFINIR
 
 
 def resolver_configuracion_ejes(unidades):
@@ -187,7 +206,7 @@ def resolver_configuracion_ejes(unidades):
         lado_extra_por_indice[indice] = lado
 
         config = {
-            "title": unidad,
+            "title": {"text": unidad, "standoff": 12},
             "automargin": True,
             "showgrid": indice == 1,
             "zeroline": False,
@@ -198,6 +217,7 @@ def resolver_configuracion_ejes(unidades):
             config["overlaying"] = "y"
             config["anchor"] = "free"
             config["side"] = lado
+            config["shift"] = -12 if lado == "left" else 12
             conteo_lados[lado] += 1
             orden_lateral = conteo_lados[lado]
             config["_orden_lateral"] = orden_lateral
@@ -227,8 +247,8 @@ def resolver_configuracion_ejes(unidades):
         "domain": [dominio_x_inicio, dominio_x_fin],
     }
     layout_updates["margin"] = {
-        "l": 70 + (45 * conteo_lados["left"]),
-        "r": 70 + (45 * conteo_lados["right"]),
+        "l": 85 + (65 * conteo_lados["left"]),
+        "r": 85 + (65 * conteo_lados["right"]),
         "t": 40,
         "b": 40,
     }
@@ -383,21 +403,6 @@ def register_callbacks(app):
             return [v for v in variables_agregadas if v != variable]
 
         return variables_agregadas
-
-    @app.callback(
-        Output("variables-seleccionadas-store", "data", allow_duplicate=True),
-        Output("vistas-temporales-dropdown", "value"),
-        Input("vistas-temporales-dropdown", "value"),
-        State("variables-seleccionadas-store", "data"),
-        prevent_initial_call=True,
-    )
-    def aplicar_vista_temporal(vista_temporal, variables_agregadas):
-        if not vista_temporal:
-            return no_update, None
-
-        variables_agregadas = list(variables_agregadas or [])
-        variables_vista = VISTAS_TEMPORALES.get(vista_temporal, [])
-        return normalizar_lista_unica(variables_agregadas + variables_vista), None
 
     @app.callback(
         Output("variables-seleccionadas-container", "children"),
@@ -670,6 +675,14 @@ def register_callbacks(app):
             tipo_periodo,
             detalle_periodo,
         )
+        freq = obtener_freq_efectiva(
+            estado_grafico,
+            filtros_guardados,
+            modo_operacion,
+            arranque_id,
+            parada_id,
+            operacion_id,
+        )
         df_grafico = cargar_dataframe_filtrado(
             estado_grafico,
             columnas,
@@ -678,6 +691,11 @@ def register_callbacks(app):
             arranque_id,
             parada_id,
             operacion_id,
+        )
+        df_grafico = completar_indice_temporal(
+            df_grafico,
+            freq,
+            rango_tiempo=obtener_rango_desde_estado_grafico(estado_grafico),
         )
 
         normalizar = "normalizar" in (normalizar_opciones or [])
