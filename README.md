@@ -8,7 +8,7 @@ y visualizarlos en una app Dash.
 - `dashboard_app/`: paquete de la app Dash y entrypoint ejecutable con `python -m dashboard_app`.
 - `data_processing/`: paquete con la logica reusable de procesamiento de datos, construccion de datasets analiticos y entrypoints ETL.
 - `analysis_core/`: paquete con la logica compartida de analisis, contextos operativos, cache precomputada y entrypoint de precomputo.
-- `config.py`: configuracion compartida de rutas y nombres de archivos.
+- `config/`: modulo compartido de configuracion de rutas y nombres de archivos.
 - `data/`: carpeta con datos originales, outputs base por fase, datasets unificados, logs y resumenes.
 
 ## Estructura esperada de datos
