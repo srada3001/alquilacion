@@ -15,7 +15,7 @@ def build_page(fases):
                 [("Inicio", HOME_ROUTE)]
             ),
             *build_shared_variable_controls(fases, SERIES_TEMPORALES_VIEWS_SCOPE),
-            html.H1("Evolucion temporal", style=TITULO_CENTRADO_STYLE),
+            html.H1("Gráficas de series temporales y reportes", style=TITULO_CENTRADO_STYLE),
             html.Div(
                 [
                     dcc.Checklist(

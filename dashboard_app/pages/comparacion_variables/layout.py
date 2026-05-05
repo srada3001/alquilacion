@@ -12,7 +12,7 @@ def build_page(fases):
     return html.Div(
         [
             construir_links_secundarios([("Inicio", HOME_ROUTE)]),
-            html.H1("Comparacion de variables", style=TITULO_CENTRADO_STYLE),
+            html.H1("Graficas de variable vs variable", style=TITULO_CENTRADO_STYLE),
             html.Div(
                 "Selecciona variables en orden. Cada par consecutivo genera un bloque de comparacion debajo.",
                 style=DESCRIPCION_SECCION_STYLE,

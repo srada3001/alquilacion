@@ -53,8 +53,8 @@ def build_page():
                     construir_bloque_imagen_planta(),
                     html.Div(
                         [
-                            construir_link_boton("Series temporales", SERIES_TEMPORALES_ROUTE),
-                            construir_link_boton("Comparacion de variables", COMPARACION_VARIABLES_ROUTE),
+                            construir_link_boton("Gráficas de series temporales y reportes", SERIES_TEMPORALES_ROUTE),
+                            construir_link_boton("Graficas de variable vs variable", COMPARACION_VARIABLES_ROUTE),
                             construir_link_boton("Relaciones no lineales", RELACIONES_NO_LINEALES_ROUTE),
                             construir_link_boton("Valvulas", VALVULAS_ROUTE),
                             construir_link_boton("Bombas", BOMBAS_ROUTE),
