@@ -18,4 +18,4 @@ COPY . .
 
 EXPOSE 7860
 
-CMD ["python", "dashboard_app.py"]
+CMD ["python", "-m", "dashboard_app"]

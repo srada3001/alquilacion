@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from analysis_core.operation_events import obtener_eventos_operacion, obtener_operaciones
 from config import ANALYSIS_DATA_FOLDER, DATA_PATH
-from dashboard_app.domain.operation_events import obtener_eventos_operacion, obtener_operaciones
 
 
 PRECOMPUTED_ANALYSIS_VERSION = 4
@@ -55,7 +55,7 @@ def get_precomputed_analysis_contexts():
     contextos = [
         {
             "key": PRECOMPUTED_ANALYSIS_CONTEXT_COMPLETA,
-            "label": "Operación completa",
+            "label": "OperaciÃ³n completa",
             "modo_operacion": "completa",
             "arranque_id": None,
             "parada_id": None,
@@ -65,20 +65,19 @@ def get_precomputed_analysis_contexts():
 
     for evento in obtener_eventos_operacion():
         if evento["arranque_inicio"] is None or evento["arranque_fin"] is None:
-            pass
-        else:
-            contextos.append(
-                {
-                    "key": build_precomputed_analysis_context_key(
-                        arranque_id=evento["arranque_id"],
-                    ),
-                    "label": f"Arranque {evento['indice']:02d}",
-                    "modo_operacion": "toda",
-                    "arranque_id": evento["arranque_id"],
-                    "parada_id": None,
-                    "operacion_id": None,
-                }
-            )
+            continue
+        contextos.append(
+            {
+                "key": build_precomputed_analysis_context_key(
+                    arranque_id=evento["arranque_id"],
+                ),
+                "label": f"Arranque {evento['indice']:02d}",
+                "modo_operacion": "toda",
+                "arranque_id": evento["arranque_id"],
+                "parada_id": None,
+                "operacion_id": None,
+            }
+        )
 
     for operacion in obtener_operaciones():
         contextos.append(
@@ -86,7 +85,7 @@ def get_precomputed_analysis_contexts():
                 "key": build_precomputed_analysis_context_key(
                     operacion_id=operacion["operacion_id"],
                 ),
-                "label": f"Operación {operacion['indice']:02d}",
+                "label": f"OperaciÃ³n {operacion['indice']:02d}",
                 "modo_operacion": "toda",
                 "arranque_id": None,
                 "parada_id": None,
@@ -112,10 +111,9 @@ def get_precomputed_analysis_columns():
 
 
 def has_precomputed_analysis_result(column_name, context_key):
-    if column_name not in PRECOMPUTED_ANALYSIS_COLUMNS:
+    if column_name not in PRECOMPUTED_ANALYSIS_COLUMNS or not context_key:
         return False
-    if not context_key:
-        return False
+
     base_path = get_analysis_cache_path(column_name, context_key)
     metadata_path = base_path / "metadata.json"
     summary_path = base_path / "summary.parquet"
@@ -161,17 +159,13 @@ def save_precomputed_analysis_result(
 
 
 def load_precomputed_analysis_result(column_name, context_key):
-    if column_name not in PRECOMPUTED_ANALYSIS_COLUMNS:
-        return None
-    if not context_key:
+    if column_name not in PRECOMPUTED_ANALYSIS_COLUMNS or not context_key:
         return None
 
     base_path = get_analysis_cache_path(column_name, context_key)
     metadata_path = base_path / "metadata.json"
-    if not metadata_path.exists():
-        return None
     summary_path = base_path / "summary.parquet"
-    if not summary_path.exists():
+    if not metadata_path.exists() or not summary_path.exists():
         return None
 
     frames = {}
@@ -191,3 +185,4 @@ def load_precomputed_analysis_result(column_name, context_key):
         "rf": frames["rf"],
         "metrics": metadata.get("metrics", {}),
     }
+

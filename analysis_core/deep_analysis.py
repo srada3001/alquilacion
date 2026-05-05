@@ -278,7 +278,7 @@ def train_random_forest(model_df):
         return pd.DataFrame(), {}
 
     split = int(len(model_df) * 0.8)
-    if split < 20 or split >= len(model_df):   # safer minimum size
+    if split < 20 or split >= len(model_df):
         return pd.DataFrame(), {"error": "Dataset too small after split"}
 
     train = model_df.iloc[:split]
@@ -289,31 +289,27 @@ def train_random_forest(model_df):
     x_test = test.drop(columns=["target"])
     y_test = test["target"].values
 
-    # === Imputation with proper feature tracking ===
     imputer = SimpleImputer(strategy="median")
     x_train_imp = imputer.fit_transform(x_train)
     x_test_imp = imputer.transform(x_test)
 
-    # Determine which features were actually used (not all-NaN)
     statistics = imputer.statistics_
     if statistics.ndim == 1:
-        # Most common case
         valid_mask = ~np.isnan(statistics)
     else:
         valid_mask = ~np.all(np.isnan(statistics), axis=0)
 
     kept_features = x_train.columns[valid_mask].tolist()
-
-    if len(kept_features) == 0:
+    if not kept_features:
         return pd.DataFrame(), {"error": "All features dropped by imputer"}
 
-    # If some features were dropped, warn once
     dropped_count = len(x_train.columns) - len(kept_features)
     if dropped_count > 0:
-        print(f"  → Warning: {dropped_count} feature(s) were fully NaN and dropped by imputer "
-              f"(e.g. very large lags with insufficient overlap).")
+        print(
+            f"  â†’ Warning: {dropped_count} feature(s) were fully NaN and dropped by imputer "
+            f"(e.g. very large lags with insufficient overlap)."
+        )
 
-    # Train the model on the imputed data (which has only kept features)
     min_samples_leaf = max(2, min(8, len(train) // 20))
     model = RandomForestRegressor(
         n_estimators=250,
@@ -324,8 +320,6 @@ def train_random_forest(model_df):
     model.fit(x_train_imp, y_train)
 
     predictions = model.predict(x_test_imp)
-
-    # Permutation importance
     perm = permutation_importance(
         model,
         x_test_imp,
@@ -335,11 +329,13 @@ def train_random_forest(model_df):
         n_jobs=-1,
     )
 
-    importance = pd.DataFrame({
-        "feature": kept_features,
-        "importance_mean": perm.importances_mean,
-        "importance_std": perm.importances_std,
-    }).sort_values("importance_mean", ascending=False)
+    importance = pd.DataFrame(
+        {
+            "feature": kept_features,
+            "importance_mean": perm.importances_mean,
+            "importance_std": perm.importances_std,
+        }
+    ).sort_values("importance_mean", ascending=False)
 
     metrics = {
         "train_rows": int(len(train)),

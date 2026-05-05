@@ -97,3 +97,4 @@ def obtener_operaciones():
         )
 
     return operaciones
+

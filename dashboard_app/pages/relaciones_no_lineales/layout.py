@@ -1,15 +1,15 @@
 from dash import dcc, html
 
+from analysis_core.precomputed_analysis import (
+    get_precomputed_analysis_columns,
+    get_precomputed_analysis_contexts,
+)
 from dashboard_app.callbacks.common import TITULO_CENTRADO_STYLE
 from dashboard_app.pages.routes import HOME_ROUTE
 from dashboard_app.pages.shared import (
     APP_PAGE_STYLE,
     DESCRIPCION_SECCION_STYLE,
     construir_links_secundarios,
-)
-from dashboard_app.repositories.analysis_cache import (
-    get_precomputed_analysis_columns,
-    get_precomputed_analysis_contexts,
 )
 
 ANALISIS_PROFUNDO_SELECTORES_STYLE = {

@@ -11,8 +11,8 @@ from data_processing.etl.transform import (
     ajustar_formatos,
     configurar_fecha_como_index,
     eliminar_columnas_duplicadas,
-    eliminar_filas_duplicadas,
     eliminar_columnas_sin_informacion,
+    eliminar_filas_duplicadas,
     eliminar_filas_sin_informacion,
     renombrar_columnas,
     resamplear_por_frecuencia,
@@ -24,15 +24,13 @@ from data_processing.etl.utils import set_logger
 
 warnings.filterwarnings("ignore", category=pd.errors.DtypeWarning)
 
-if __name__ == "__main__":
+
+def main():
     logging.info("ETL comenzado")
 
     logging.info("Buscando las fases")
     raw_data_root = os.path.join(DATA_PATH, RAW_DATA_FOLDER)
-    fases = [
-        f for f in os.listdir(raw_data_root)
-        if os.path.isdir(get_raw_phase_path(f))
-    ]
+    fases = [f for f in os.listdir(raw_data_root) if os.path.isdir(get_raw_phase_path(f))]
     logging.info("Fases encontradas: %s", fases)
 
     for fase in fases:
@@ -69,3 +67,7 @@ if __name__ == "__main__":
         cargar_df(df=df_5m, fase=fase, logger=logger)
 
     logging.info("ETL terminado")
+
+
+if __name__ == "__main__":
+    main()

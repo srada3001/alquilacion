@@ -3,8 +3,8 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
+from analysis_core.dataset_catalog import obtener_columnas_numericas_dataset
 from data_processing.analysis_dataset import load_combined_dataset
-from dashboard_app.data import obtener_columnas_numericas_dataset
 
 
 def construir_tabla_describe(serie):

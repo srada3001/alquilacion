@@ -1,15 +1,15 @@
 import sys
 
-from data_processing.analysis_dataset import load_combined_dataset
-from dashboard_app.callbacks.common import construir_mascara_contexto_operacion
-from dashboard_app.data import obtener_columnas_numericas_dataset
-from dashboard_app.domain.deep_analysis import calcular_influencias_para_variable
-from dashboard_app.repositories.analysis_cache import (
+from analysis_core.dataset_catalog import obtener_columnas_numericas_dataset
+from analysis_core.deep_analysis import calcular_influencias_para_variable
+from analysis_core.operation_context import construir_mascara_contexto_operacion
+from analysis_core.precomputed_analysis import (
     PRECOMPUTED_ANALYSIS_COLUMNS,
     get_precomputed_analysis_contexts,
     has_precomputed_analysis_result,
     save_precomputed_analysis_result,
 )
+from data_processing.analysis_dataset import load_combined_dataset
 
 
 def load_dataset_influence(columnas_objetivo):

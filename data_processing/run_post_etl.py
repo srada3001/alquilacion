@@ -48,7 +48,7 @@ VARIABLES_PREFILTRADAS = {
 
 VARIABLES_DERIVADAS = {
     "despropanizadora_y_despojo": {
-        "columna_nueva": "Relación de vapor de cima y carga",
+        "columna_nueva": "RelaciÃ³n de vapor de cima y carga",
         "numerador": "FI-1148",
         "numerador_bpd": "FI-1148BPD",
         "denominador": "FIC-1145",
@@ -103,9 +103,7 @@ def aplicar_variables_prefiltradas(df, reglas):
         elif valor_maximo is None:
             serie = serie.where(serie >= valor_minimo)
         else:
-            serie = serie.where(
-                serie.between(valor_minimo, valor_maximo, inclusive="both")
-            )
+            serie = serie.where(serie.between(valor_minimo, valor_maximo, inclusive="both"))
 
         df_actualizado[regla["columna_nueva"]] = serie
         df_actualizado = df_actualizado.drop(columns=[columna_origen])
@@ -119,7 +117,6 @@ def aplicar_variables_derivadas(df, reglas):
     columnas_generadas = []
 
     if isinstance(reglas, dict):
-        # Permite definir una sola regla como diccionario plano o varias como lista.
         if "columna_nueva" in reglas:
             reglas_iterables = [reglas]
         else:
@@ -187,11 +184,7 @@ def actualizar_fase(
 
 
 def construir_fases_post_etl():
-    fases = (
-        set(VARIABLES_KALMAN)
-        | set(VARIABLES_PREFILTRADAS)
-        | set(VARIABLES_DERIVADAS)
-    )
+    fases = set(VARIABLES_KALMAN) | set(VARIABLES_PREFILTRADAS) | set(VARIABLES_DERIVADAS)
     return sorted(fases)
 
 

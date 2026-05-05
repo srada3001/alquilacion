@@ -1,15 +1,15 @@
-from functools import lru_cache
-
 import pandas as pd
 
+from analysis_core.dataset_catalog import obtener_columnas_fase
+from analysis_core.operation_context import construir_mascara_contexto_operacion
+from analysis_core.operation_events import obtener_eventos_operacion, obtener_operaciones
 from data_processing.analysis_dataset import load_combined_dataset
-from dashboard_app.data import formatear_nombre_fase, obtener_columnas_fase
+from dashboard_app.data import formatear_nombre_fase
 from dashboard_app.domain.filters import (
     construir_rango_fecha,
     normalizar_filtros_guardados,
     obtener_filtro_periodo,
 )
-from dashboard_app.domain.operation_events import obtener_eventos_operacion, obtener_operaciones
 
 
 BADGE_CONTAINER_STYLE = {
@@ -339,96 +339,6 @@ def resolver_contexto_operacion_desde_periodo(tipo_periodo, detalle_periodo):
     if tipo_periodo == "operacion" and detalle_periodo:
         return None, None, None, detalle_periodo
     return None, None, None, None
-
-
-@lru_cache(maxsize=2)
-def get_operational_reference_index():
-    df_5min = load_combined_dataset("5min")
-    return df_5min.index
-
-
-@lru_cache(maxsize=1)
-def get_downtime_mask_5min():
-    indice_5min = get_operational_reference_index()
-    mask = pd.Series(False, index=indice_5min)
-    if mask.empty:
-        return mask
-
-    ultimo_timestamp = indice_5min.max()
-    for evento in obtener_eventos_operacion():
-        inicio = evento["parada_fin"]
-        fin = evento["arranque_inicio"] if evento["arranque_inicio"] is not None else ultimo_timestamp
-        if inicio is None or fin is None or fin <= inicio:
-            continue
-        mask |= (indice_5min >= inicio) & (indice_5min < fin)
-    return mask
-
-
-def construir_mascara_contexto_operacion(
-    df,
-    modo_operacion=None,
-    arranque_id=None,
-    parada_id=None,
-    operacion_id=None,
-):
-    if df.empty:
-        return None
-
-    mascara = None
-
-    if modo_operacion == "completa":
-        downtime_mask = get_downtime_mask_5min().reindex(df.index, fill_value=False)
-        mascara = ~downtime_mask
-
-    if arranque_id:
-        evento = next(
-            (item for item in obtener_eventos_operacion() if item["arranque_id"] == arranque_id),
-            None,
-        )
-        if evento is None or evento["arranque_inicio"] is None or evento["arranque_fin"] is None:
-            arranque_mask = pd.Series(False, index=df.index)
-        else:
-            indice_5min = get_operational_reference_index()
-            arranque_mask_5min = pd.Series(
-                (indice_5min >= evento["arranque_inicio"]) & (indice_5min <= evento["arranque_fin"]),
-                index=indice_5min,
-            )
-            arranque_mask = arranque_mask_5min.reindex(df.index, fill_value=False)
-        mascara = arranque_mask if mascara is None else (mascara & arranque_mask)
-
-    if parada_id:
-        evento = next(
-            (item for item in obtener_eventos_operacion() if item["parada_id"] == parada_id),
-            None,
-        )
-        if evento is None or evento["parada_inicio"] is None or evento["parada_fin"] is None:
-            parada_mask = pd.Series(False, index=df.index)
-        else:
-            indice_5min = get_operational_reference_index()
-            parada_mask_5min = pd.Series(
-                (indice_5min >= evento["parada_inicio"]) & (indice_5min <= evento["parada_fin"]),
-                index=indice_5min,
-            )
-            parada_mask = parada_mask_5min.reindex(df.index, fill_value=False)
-        mascara = parada_mask if mascara is None else (mascara & parada_mask)
-
-    if operacion_id:
-        operacion = next(
-            (item for item in obtener_operaciones() if item["operacion_id"] == operacion_id),
-            None,
-        )
-        if operacion is None or operacion["operacion_inicio"] is None or operacion["operacion_fin"] is None:
-            operacion_mask = pd.Series(False, index=df.index)
-        else:
-            indice_5min = get_operational_reference_index()
-            operacion_mask_5min = pd.Series(
-                (indice_5min >= operacion["operacion_inicio"]) & (indice_5min <= operacion["operacion_fin"]),
-                index=indice_5min,
-            )
-            operacion_mask = operacion_mask_5min.reindex(df.index, fill_value=False)
-        mascara = operacion_mask if mascara is None else (mascara & operacion_mask)
-
-    return mascara
 
 
 def cargar_dataset_para_columnas(

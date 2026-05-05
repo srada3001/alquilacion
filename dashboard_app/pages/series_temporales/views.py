@@ -1,5 +1,6 @@
 from dash import html
 
+from analysis_core.operation_events import obtener_eventos_operacion, obtener_operaciones
 from dashboard_app.callbacks.common import (
     ACCION_RETIRAR_STYLE,
     BADGE_CONTAINER_STYLE,
@@ -8,7 +9,6 @@ from dashboard_app.callbacks.common import (
     formatear_timestamp_corto,
 )
 from dashboard_app.data import formatear_nombre_fase, obtener_data_uri_imagen_fase
-from dashboard_app.domain.operation_events import obtener_eventos_operacion, obtener_operaciones
 from dashboard_app.pages.series_temporales.domain import (
     construir_boxplot_relacion,
     construir_grafico_dispersion,

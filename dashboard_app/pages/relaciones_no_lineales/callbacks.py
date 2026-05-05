@@ -1,6 +1,6 @@
 from dash import Input, Output, html
 
-from dashboard_app.repositories.analysis_cache import (
+from analysis_core.precomputed_analysis import (
     get_precomputed_analysis_columns,
     load_precomputed_analysis_result,
 )

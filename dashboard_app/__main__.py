@@ -2,8 +2,8 @@ import os
 
 import dash
 
+from analysis_core.dataset_catalog import obtener_fases
 from dashboard_app.callbacks import register_callbacks
-from dashboard_app.data import obtener_fases
 from dashboard_app.pages import build_layout, register_page_callback
 
 
@@ -16,8 +16,12 @@ register_page_callback(app, fases)
 register_callbacks(app)
 
 
-if __name__ == "__main__":
+def main():
     host = os.getenv("HOST", "0.0.0.0")
     port = int(os.getenv("PORT", "7860"))
     debug = os.getenv("DASH_DEBUG", "").strip().lower() in {"1", "true", "yes"}
     app.run(host=host, port=port, debug=debug)
+
+
+if __name__ == "__main__":
+    main()
