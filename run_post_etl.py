@@ -118,7 +118,16 @@ def aplicar_variables_derivadas(df, reglas):
     df_actualizado = df.copy()
     columnas_generadas = []
 
-    for regla in reglas:
+    if isinstance(reglas, dict):
+        # Permite definir una sola regla como diccionario plano o varias como lista.
+        if "columna_nueva" in reglas:
+            reglas_iterables = [reglas]
+        else:
+            reglas_iterables = list(reglas.values())
+    else:
+        reglas_iterables = reglas
+
+    for regla in reglas_iterables:
         numerador_bpd = regla["numerador_bpd"]
 
         if numerador_bpd in df_actualizado.columns:

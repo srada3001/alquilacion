@@ -2,9 +2,11 @@ from dash import html
 
 from dashboard_app.data import obtener_data_uri_imagen_planta
 from dashboard_app.pages.routes import (
+    BOMBAS_ROUTE,
     COMPARACION_VARIABLES_ROUTE,
     RELACIONES_NO_LINEALES_ROUTE,
     SERIES_TEMPORALES_ROUTE,
+    VALVULAS_ROUTE,
 )
 from dashboard_app.pages.shared import (
     APP_PAGE_STYLE,
@@ -54,6 +56,8 @@ def build_page():
                             construir_link_boton("Series temporales", SERIES_TEMPORALES_ROUTE),
                             construir_link_boton("Comparacion de variables", COMPARACION_VARIABLES_ROUTE),
                             construir_link_boton("Relaciones no lineales", RELACIONES_NO_LINEALES_ROUTE),
+                            construir_link_boton("Valvulas", VALVULAS_ROUTE),
+                            construir_link_boton("Bombas", BOMBAS_ROUTE),
                         ],
                         style=HOME_ACTIONS_STYLE,
                     ),

@@ -89,6 +89,51 @@ def construir_placeholder_imagen_fase():
     )
 
 
+def construir_dropdown_fases(fases, dropdown_id, value=None, multi=False):
+    return dcc.Dropdown(
+        id=dropdown_id,
+        options=[{"label": formatear_nombre_fase(fase), "value": fase} for fase in fases],
+        value=value,
+        placeholder="Seleccionar fases",
+        multi=multi,
+    )
+
+
+def filtrar_fases_para_activos(fases):
+    fases_filtradas = []
+    for fase in fases or []:
+        texto = str(fase or "").strip()
+        if not texto:
+            continue
+        if texto.lower().startswith("lab"):
+            continue
+        fases_filtradas.append(texto)
+    return sorted(set(fases_filtradas), key=lambda item: item.lower())
+
+
+def resolver_fases_activos_desde_registros(registros, fallback_fases=None, campo_fase="fase"):
+    if registros is not None and campo_fase in registros.columns:
+        fases = registros[campo_fase].dropna().astype(str).tolist()
+        fases_filtradas = filtrar_fases_para_activos(fases)
+        if fases_filtradas:
+            return fases_filtradas
+    return filtrar_fases_para_activos(fallback_fases or [])
+
+
+def construir_selector_fases_activos(fases, dropdown_id, value=None):
+    return html.Div(
+        [
+            construir_dropdown_fases(
+                fases,
+                dropdown_id,
+                value=value if value is not None else [],
+                multi=True,
+            ),
+        ],
+        style={**SELECTORES_STYLE, "gridTemplateColumns": "minmax(240px, 1fr)", "marginBottom": "16px"},
+    )
+
+
 def build_shared_variable_controls(fases, views_scope):
     vistas_guardadas = load_saved_views(views_scope)
     return [
@@ -125,11 +170,11 @@ def build_shared_variable_controls(fases, views_scope):
         html.Div(id="vista-guardada-estado", style=ESTADO_VISTA_GUARDADA_STYLE),
         html.Div(
             [
-                dcc.Dropdown(
-                    id="seleccion-fases-dropdown",
-                    options=[{"label": formatear_nombre_fase(fase), "value": fase} for fase in fases],
+                construir_dropdown_fases(
+                    fases,
+                    "seleccion-fases-dropdown",
                     value=None,
-                    placeholder="Seleccionar fases",
+                    multi=False,
                 ),
                 dcc.Dropdown(
                     id="seleccion-variables-dropdown",
