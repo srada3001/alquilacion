@@ -17,10 +17,12 @@ from dashboard_app.pages.routes import (
     RELACIONES_NO_LINEALES_ROUTE,
     SERIES_TEMPORALES_ROUTE,
     VALVULAS_ROUTE,
+    VARIABLES_CRITICAS_ROUTE,
 )
 from dashboard_app.pages.series_temporales.layout import build_page as build_series_temporales_page
 from dashboard_app.pages.valvulas.callbacks import register_callbacks as register_valvulas_callbacks
 from dashboard_app.pages.valvulas.layout import build_page as build_valvulas_page
+from dashboard_app.pages.variables_criticas.layout import build_page as build_variables_criticas_page
 
 
 def build_layout(_fases):
@@ -50,6 +52,8 @@ def register_page_callback(app, fases):
             return build_valvulas_page(fases)
         if pathname == BOMBAS_ROUTE:
             return build_bombas_page(fases)
+        if pathname == VARIABLES_CRITICAS_ROUTE:
+            return build_variables_criticas_page()
         return build_not_found_page()
 
     register_valvulas_callbacks(app)

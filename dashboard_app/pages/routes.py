@@ -1,6 +1,7 @@
 HOME_ROUTE = "/"
-SERIES_TEMPORALES_ROUTE = "/series-temporales"
+SERIES_TEMPORALES_ROUTE = "/grafica_de_series_temporales_y_reportes"
 COMPARACION_VARIABLES_ROUTE = "/comparacion-variables"
 RELACIONES_NO_LINEALES_ROUTE = "/relaciones-no-lineales"
 VALVULAS_ROUTE = "/valvulas"
 BOMBAS_ROUTE = "/bombas"
+VARIABLES_CRITICAS_ROUTE = "/variables-criticas"

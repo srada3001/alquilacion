@@ -7,6 +7,7 @@ from dashboard_app.pages.routes import (
     RELACIONES_NO_LINEALES_ROUTE,
     SERIES_TEMPORALES_ROUTE,
     VALVULAS_ROUTE,
+    VARIABLES_CRITICAS_ROUTE,
 )
 from dashboard_app.pages.shared import (
     APP_PAGE_STYLE,
@@ -58,6 +59,7 @@ def build_page():
                             construir_link_boton("Relaciones no lineales", RELACIONES_NO_LINEALES_ROUTE),
                             construir_link_boton("Valvulas", VALVULAS_ROUTE),
                             construir_link_boton("Bombas", BOMBAS_ROUTE),
+                            construir_link_boton("Variables criticas", VARIABLES_CRITICAS_ROUTE),
                         ],
                         style=HOME_ACTIONS_STYLE,
                     ),

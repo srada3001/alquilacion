@@ -1,4 +1,4 @@
-from dash import ALL, Input, Output, State, callback_context, html, no_update
+from dash import ALL, Input, Output, State, callback_context, dcc, html, no_update
 import pandas as pd
 import plotly.graph_objects as go
 import re
@@ -253,6 +253,57 @@ def resolver_configuracion_ejes(unidades):
         "b": 40,
     }
     return referencias, layout_updates
+
+
+def agrupar_columnas_por_unidad(columnas, normalizar=False):
+    grupos = {}
+    for columna in columnas:
+        clave = construir_clave_eje(columna, normalizar=normalizar)
+        grupos.setdefault(clave, []).append(columna)
+    return grupos
+
+
+def construir_figura_series_temporales(
+    df_grafico,
+    columnas,
+    normalizar=False,
+    multi_eje=True,
+    uirevision=None,
+    rango_visible=None,
+):
+    fig = go.Figure()
+    columnas_visibles = [col for col in columnas if col in df_grafico.columns]
+    if not columnas_visibles:
+        return fig
+
+    grupos_unidad = agrupar_columnas_por_unidad(columnas_visibles, normalizar=normalizar)
+    unidades_visibles = list(grupos_unidad.keys())
+    referencias_eje, layout_ejes = resolver_configuracion_ejes(unidades_visibles if multi_eje else unidades_visibles[:1])
+    eje_unico = referencias_eje.get(unidades_visibles[0], "y") if unidades_visibles else "y"
+
+    for col in columnas_visibles:
+        serie = normalizar_serie(df_grafico[col]) if normalizar else df_grafico[col]
+        clave_eje = construir_clave_eje(col, normalizar=normalizar)
+        fig.add_trace(
+            go.Scatter(
+                x=df_grafico.index,
+                y=serie,
+                mode="lines",
+                name=construir_etiqueta_columna(col),
+                connectgaps=False,
+                yaxis=referencias_eje.get(clave_eje, "y") if multi_eje else eje_unico,
+            )
+        )
+
+    fig.update_layout(
+        hovermode="x unified",
+        showlegend=True,
+        uirevision=uirevision,
+        **layout_ejes,
+    )
+    if rango_visible is not None:
+        fig.update_layout(xaxis_range=rango_visible)
+    return fig
 
 
 def register_callbacks(app):
@@ -652,6 +703,7 @@ def register_callbacks(app):
 
     @app.callback(
         Output("grafico", "figure"),
+        Output("graficas-por-unidad-container", "children"),
         Input("estado-grafico-store", "data"),
         Input("normalizar-checklist", "value"),
         Input("variables-seleccionadas-store", "data"),
@@ -669,7 +721,7 @@ def register_callbacks(app):
     ):
         columnas = list(variables_seleccionadas or [])
         if not columnas:
-            return go.Figure()
+            return go.Figure(), []
 
         modo_operacion, arranque_id, parada_id, operacion_id = resolver_contexto_operacion_desde_periodo(
             tipo_periodo,
@@ -699,51 +751,63 @@ def register_callbacks(app):
         )
 
         normalizar = "normalizar" in (normalizar_opciones or [])
-        fig = go.Figure()
-        unidades_visibles = []
+        rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
+        uirevision_base = (
+            f"{modo_operacion}::{arranque_id or 'sin-arranque'}::"
+            f"{parada_id or 'sin-parada'}::{operacion_id or 'sin-operacion'}"
+        )
+        fig = construir_figura_series_temporales(
+            df_grafico,
+            columnas,
+            normalizar=normalizar,
+            multi_eje=True,
+            uirevision=f"grafico-principal::{uirevision_base}",
+            rango_visible=(
+                rango_visible
+                if not hay_contexto_operacion(
+                    modo_operacion,
+                    arranque_id,
+                    parada_id,
+                    operacion_id,
+                )
+                else None
+            ),
+        )
 
-        for col in columnas:
-            if col not in df_grafico.columns:
-                continue
-            clave_eje = construir_clave_eje(col, normalizar=normalizar)
-            unidades_visibles.append(clave_eje)
-        referencias_eje, layout_ejes = resolver_configuracion_ejes(unidades_visibles)
+        grupos_unidad = agrupar_columnas_por_unidad(columnas, normalizar=normalizar)
+        if len(grupos_unidad) <= 1:
+            return fig, []
 
-        for col in columnas:
-            if col not in df_grafico.columns:
-                continue
-            serie = normalizar_serie(df_grafico[col]) if normalizar else df_grafico[col]
-            clave_eje = construir_clave_eje(col, normalizar=normalizar)
-            fig.add_trace(
-                go.Scatter(
-                    x=df_grafico.index,
-                    y=serie,
-                    mode="lines",
-                    name=construir_etiqueta_columna(col),
-                    connectgaps=False,
-                    yaxis=referencias_eje.get(clave_eje, "y"),
+        graficas_por_unidad = []
+        for unidad, columnas_grupo in grupos_unidad.items():
+            figura_grupo = construir_figura_series_temporales(
+                df_grafico,
+                columnas_grupo,
+                normalizar=normalizar,
+                multi_eje=False,
+                uirevision=f"grafico-unidad::{unidad}::{uirevision_base}",
+                rango_visible=(
+                    rango_visible
+                    if not hay_contexto_operacion(
+                        modo_operacion,
+                        arranque_id,
+                        parada_id,
+                        operacion_id,
+                    )
+                    else None
+                ),
+            )
+            graficas_por_unidad.append(
+                html.Div(
+                    [
+                        html.H3(f"Variables con unidad: {unidad}"),
+                        dcc.Graph(figure=figura_grupo),
+                    ],
+                    style={"marginTop": "20px"},
                 )
             )
 
-        fig.update_layout(
-            hovermode="x unified",
-            showlegend=True,
-            uirevision=(
-                f"grafico-principal::{modo_operacion}::"
-                f"{arranque_id or 'sin-arranque'}::{parada_id or 'sin-parada'}::"
-                f"{operacion_id or 'sin-operacion'}"
-            ),
-            **layout_ejes,
-        )
-        rango_visible = obtener_rango_desde_estado_grafico(estado_grafico)
-        if rango_visible is not None and not hay_contexto_operacion(
-            modo_operacion,
-            arranque_id,
-            parada_id,
-            operacion_id,
-        ):
-            fig.update_layout(xaxis_range=rango_visible)
-        return fig
+        return fig, graficas_por_unidad
 
     @app.callback(
         Output("report-variable-dropdown", "options"),

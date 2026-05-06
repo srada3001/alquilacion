@@ -11,11 +11,9 @@ SERIES_TEMPORALES_VIEWS_SCOPE = "series_temporales"
 def build_page(fases):
     return html.Div(
         [
-            construir_links_secundarios(
-                [("Inicio", HOME_ROUTE)]
-            ),
+            construir_links_secundarios([("Inicio", HOME_ROUTE)]),
             *build_shared_variable_controls(fases, SERIES_TEMPORALES_VIEWS_SCOPE),
-            html.H1("Gráficas de series temporales y reportes", style=TITULO_CENTRADO_STYLE),
+            html.H1("Gráfica de series temporales", style=TITULO_CENTRADO_STYLE),
             html.Div(
                 [
                     dcc.Checklist(
@@ -27,6 +25,7 @@ def build_page(fases):
                 style={"marginBottom": "12px"},
             ),
             dcc.Graph(id="grafico"),
+            html.Div(id="graficas-por-unidad-container"),
             html.Div(
                 [
                     html.H1("Reporte", style=TITULO_CENTRADO_STYLE),
