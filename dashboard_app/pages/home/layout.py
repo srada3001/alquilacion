@@ -48,7 +48,7 @@ def construir_bloque_imagen_planta():
 def build_page():
     return html.Div(
         [
-            html.H1("Dashboard U-044", style=HOME_TITLE_STYLE),
+            html.H1("Alky360", style=HOME_TITLE_STYLE),
             html.Div(
                 [
                     construir_bloque_imagen_planta(),
