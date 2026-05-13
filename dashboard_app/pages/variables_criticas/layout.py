@@ -1,168 +1,138 @@
 from pathlib import Path
-import unicodedata
 
 import pandas as pd
 from dash import html
 
 from config import get_metadata_path
 from dashboard_app.callbacks.common import TITULO_CENTRADO_STYLE
+from dashboard_app.pages.indicator_utils import (
+    EMPTY_STATE_STYLE,
+    HEADER_CELL_STYLE,
+    STATUS_STYLES,
+    TABLE_STYLE,
+    TABLE_WRAPPER_STYLE,
+    construir_celda,
+    construir_celda_grafico,
+    construir_grafico_semaforo,
+    formatear_texto,
+    leer_csv_con_codificaciones,
+)
 from dashboard_app.pages.routes import HOME_ROUTE
-from dashboard_app.pages.shared import APP_PAGE_STYLE, DESCRIPCION_SECCION_STYLE, construir_links_secundarios
+from dashboard_app.pages.shared import APP_PAGE_STYLE, construir_links_secundarios
 
-TABLE_WRAPPER_STYLE = {
-    "overflowX": "auto",
-}
-
-TABLE_STYLE = {
-    "width": "100%",
-    "borderCollapse": "collapse",
-    "backgroundColor": "#ffffff",
-    "borderRadius": "12px",
-    "overflow": "hidden",
-    "boxShadow": "0 4px 14px rgba(0, 0, 0, 0.08)",
-}
-
-HEADER_CELL_STYLE = {
-    "padding": "14px 16px",
-    "textAlign": "left",
-    "backgroundColor": "#1f77b4",
-    "color": "#ffffff",
-    "fontWeight": "700",
-    "borderBottom": "1px solid #d7e3f4",
-    "whiteSpace": "nowrap",
-}
-
-BODY_CELL_STYLE = {
-    "padding": "12px 16px",
-    "borderBottom": "1px solid #e8eef5",
-    "whiteSpace": "normal",
-    "verticalAlign": "top",
-    "color": "#1f2937",
-}
-
-EMPTY_STATE_STYLE = {
-    "padding": "24px",
-    "textAlign": "center",
-    "color": "#666666",
-    "border": "1px dashed #cbd5e1",
-    "borderRadius": "12px",
-    "backgroundColor": "#f8fafc",
-}
+METADATA_PATH = Path(get_metadata_path("variables_criticas.csv"))
+COLUMNAS = ["tag", "descripcion", "valor_medido", "minimo", "normal", "normal_sor", "normal_eor", "maximo"]
 
 
-def _remover_acentos(texto):
-    return "".join(
-        caracter
-        for caracter in unicodedata.normalize("NFKD", str(texto))
-        if not unicodedata.combining(caracter)
-    )
+def _rangos(registro):
+    minimo = registro["minimo"]
+    normal = registro["normal"]
+    normal_sor = registro["normal_sor"]
+    normal_eor = registro["normal_eor"]
+    maximo = registro["maximo"]
+
+    if pd.isna(minimo) and pd.isna(normal) and pd.notna(normal_sor) and pd.notna(normal_eor) and pd.notna(maximo):
+        if normal_sor < normal_eor < maximo:
+            return [("normal", normal_sor, normal_eor), ("advertencia", normal_eor, maximo)], normal_sor, maximo
+
+    if pd.notna(minimo) and pd.notna(normal) and pd.notna(maximo) and pd.isna(normal_sor) and pd.isna(normal_eor):
+        if minimo < normal < maximo:
+            return [
+                ("advertencia", minimo, minimo + (normal - minimo) * 0.2),
+                ("normal", minimo + (normal - minimo) * 0.2, maximo - (maximo - normal) * 0.2),
+                ("advertencia", maximo - (maximo - normal) * 0.2, maximo),
+            ], minimo, maximo
+
+    if pd.isna(minimo) and pd.notna(normal) and pd.notna(maximo) and pd.isna(normal_sor) and pd.isna(normal_eor):
+        if normal < maximo:
+            return [("normal", normal, maximo - (maximo - normal) * 0.2), ("advertencia", maximo - (maximo - normal) * 0.2, maximo)], normal, maximo
+
+    return None, None, None
 
 
-def _normalizar_texto(texto):
-    limpio = _remover_acentos(texto).strip().lower()
-    reemplazos = {
-        "¢": "o",
-        "›": "o",
-    }
-    for origen, destino in reemplazos.items():
-        limpio = limpio.replace(origen, destino)
-    return " ".join(limpio.split())
-
-
-def _resolver_metadata_path():
-    return Path(get_metadata_path("variables_criticas.csv"))
-
-
-def _leer_csv_variables_criticas(path):
-    for encoding in ("utf-8", "cp1252", "latin-1"):
-        try:
-            return pd.read_csv(path, encoding=encoding)
-        except UnicodeDecodeError:
-            continue
-    return pd.read_csv(path)
-
-
-def _resolver_columna(columnas_normalizadas, aliases):
-    for alias in aliases:
-        if alias in columnas_normalizadas:
-            return columnas_normalizadas[alias]
-    raise ValueError(
-        "No se encontraron las columnas requeridas para variables criticas: "
-        + ", ".join(aliases)
-    )
+def _estado(registro):
+    segmentos, limite_inferior, limite_superior = _rangos(registro)
+    valor = registro["valor_medido"]
+    if pd.isna(valor) or not segmentos:
+        return "sin_datos"
+    if valor < limite_inferior or valor > limite_superior:
+        return "critico"
+    return next((estado for estado, inicio, fin in segmentos if inicio <= valor <= fin), "sin_datos")
 
 
 def cargar_variables_criticas():
-    metadata_path = _resolver_metadata_path()
-    if not metadata_path.exists():
-        return pd.DataFrame(columns=["tag", "descripcion", "valor_medido", "maximo"])
+    if not METADATA_PATH.exists():
+        return pd.DataFrame(columns=[*COLUMNAS, "status"])
 
-    variables_criticas = _leer_csv_variables_criticas(metadata_path).copy()
-    columnas_normalizadas = {
-        _normalizar_texto(columna): columna for columna in variables_criticas.columns
-    }
-
-    columna_tag = _resolver_columna(columnas_normalizadas, ["tag"])
-    columna_descripcion = _resolver_columna(columnas_normalizadas, ["descripcion", "description"])
-    columna_valor_medido = _resolver_columna(
-        columnas_normalizadas,
-        ["meassured value", "measured value", "valor medido"],
-    )
-    columna_maximo = _resolver_columna(columnas_normalizadas, ["max", "maximo", "valor maximo"])
-
-    resultado = pd.DataFrame(
-        {
-            "tag": variables_criticas[columna_tag],
-            "descripcion": variables_criticas[columna_descripcion],
-            "valor_medido": variables_criticas[columna_valor_medido],
-            "maximo": variables_criticas[columna_maximo],
+    df = leer_csv_con_codificaciones(METADATA_PATH)
+    resultado = df.rename(
+        columns={
+            "TAG": "tag",
+            "Descripción": "descripcion",
+            "Valor medido": "valor_medido",
+            "Mínimo": "minimo",
+            "Normal": "normal",
+            "Normal SOR": "normal_sor",
+            "Normal EOR": "normal_eor",
+            "Máximo": "maximo",
         }
     )
-    return resultado.fillna("").reset_index(drop=True)
+
+    faltantes = {"tag", "descripcion", "valor_medido", "maximo"}.difference(resultado.columns)
+    if faltantes:
+        raise ValueError(
+            "El archivo de variables criticas no contiene las columnas requeridas: "
+            + ", ".join(sorted(faltantes))
+        )
+
+    resultado = resultado.reindex(columns=COLUMNAS)
+    for columna in COLUMNAS[2:]:
+        resultado[columna] = pd.to_numeric(resultado[columna], errors="coerce")
+    resultado["status"] = resultado.apply(_estado, axis=1)
+    return resultado.reset_index(drop=True)
 
 
-def _formatear_celda(valor):
-    if valor is None:
-        return "-"
-    texto = str(valor).strip()
-    if not texto or texto.lower() == "nan":
-        return "-"
-    return texto
-
-
-def _construir_fila(registro):
-    return html.Tr(
-        [
-            html.Td(_formatear_celda(registro.get("tag")), style=BODY_CELL_STYLE),
-            html.Td(_formatear_celda(registro.get("descripcion")), style=BODY_CELL_STYLE),
-            html.Td(_formatear_celda(registro.get("valor_medido")), style=BODY_CELL_STYLE),
-            html.Td(_formatear_celda(registro.get("maximo")), style=BODY_CELL_STYLE),
-        ]
+def _grafico(registro):
+    segmentos, _, _ = _rangos(registro)
+    if not segmentos:
+        return html.Div("Sin datos suficientes para construir el indicador.", style={"color": "#6b7280"})
+    limites = [inicio for _, inicio, _ in segmentos] + [segmentos[-1][2]]
+    return construir_grafico_semaforo(
+        actual=registro["valor_medido"],
+        segmentos=segmentos,
+        limites=limites,
+        hover_label="Valor medido",
+        padding_ratio=0.08,
+        mostrar_zonas_rojas_externas=True,
     )
 
 
 def construir_tabla_variables_criticas(variables_criticas=None):
-    if variables_criticas is None:
-        variables_criticas = cargar_variables_criticas()
+    variables_criticas = cargar_variables_criticas() if variables_criticas is None else variables_criticas
     if variables_criticas.empty:
         return html.Div(
             "No hay variables criticas configuradas en data/metadata/variables_criticas.csv.",
             style=EMPTY_STATE_STYLE,
         )
 
-    encabezados = [
-        "TAG",
-        "Descripcion",
-        "Valor medido",
-        "Max",
-    ]
+    filas = []
+    for registro in variables_criticas.to_dict("records"):
+        row_style = STATUS_STYLES.get(registro["status"], STATUS_STYLES["normal"])
+        filas.append(
+            html.Tr(
+                [
+                    construir_celda(formatear_texto(registro["tag"]), row_style),
+                    construir_celda(formatear_texto(registro["descripcion"]), row_style),
+                    construir_celda_grafico(_grafico(registro), row_style),
+                ]
+            )
+        )
+
     return html.Div(
         html.Table(
             [
-                html.Thead(html.Tr([html.Th(texto, style=HEADER_CELL_STYLE) for texto in encabezados])),
-                html.Tbody(
-                    [_construir_fila(registro) for registro in variables_criticas.to_dict("records")]
-                ),
+                html.Thead(html.Tr([html.Th(texto, style=HEADER_CELL_STYLE) for texto in ("TAG", "Descripción", "Indicador")])),
+                html.Tbody(filas),
             ],
             style=TABLE_STYLE,
         ),
@@ -171,16 +141,11 @@ def construir_tabla_variables_criticas(variables_criticas=None):
 
 
 def build_page():
-    variables_criticas = cargar_variables_criticas()
     return html.Div(
         [
             construir_links_secundarios([("Inicio", HOME_ROUTE)]),
-            html.H1("Variables criticas", style=TITULO_CENTRADO_STYLE),
-            html.Div(
-                "Por ahora el valor medido se toma directamente desde la tabla de metadata. Mas adelante podremos conectarlo a actualizacion en tiempo real.",
-                style=DESCRIPCION_SECCION_STYLE,
-            ),
-            construir_tabla_variables_criticas(variables_criticas),
+            html.H1("Variables críticas", style=TITULO_CENTRADO_STYLE),
+            construir_tabla_variables_criticas(),
         ],
         style=APP_PAGE_STYLE,
     )

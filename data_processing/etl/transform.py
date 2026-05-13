@@ -2,6 +2,10 @@ import re
 
 import pandas as pd
 
+PREFIX_TAG_RE = re.compile(r"^\\\\pigrc\\044-", flags=re.IGNORECASE)
+MEAS_SUFFIX_RE = re.compile(r"\.MEAS(?:\.1)?$", flags=re.IGNORECASE)
+TAG_NUM_RE = re.compile(r"([A-Za-z]+)(\d+)")
+
 
 def unir_dataframes_por_tiempo(dataframes, logger):
     """
@@ -15,19 +19,18 @@ def unir_dataframes_por_tiempo(dataframes, logger):
     return df
 
 
-def renombrar_columnas(df, logger, prefix=r"\\pigrc\044-"):
-    """
-    Renombra las columnas de un DataFrame eliminando un prefijo comun y la terminacion .MEAS,
-    estandarizando el nombre de la columna de fecha y unificando tags tipo PI2353 a PI-2353.
-    """
-    df = df.rename(
-        columns=lambda c: "fecha" if c.strip().lower() == "fecha"
-        else re.sub(
-            r"([A-Za-z]+)(\d+)",
-            r"\1-\2",
-            c.replace(prefix, "").replace(".MEAS.1", "").replace(".MEAS", ""),
-        )
-    )
+def renombrar_columnas(df, logger):
+    """Normaliza los nombres de columnas de un DataFrame."""
+    def normalizar_columna(columna):
+        columna = str(columna).strip()
+        if columna.lower() == "fecha":
+            return "fecha"
+
+        columna = PREFIX_TAG_RE.sub("", columna)
+        columna = MEAS_SUFFIX_RE.sub("", columna)
+        return TAG_NUM_RE.sub(r"\1-\2", columna)
+
+    df = df.rename(columns=normalizar_columna)
 
     logger.info("Las columnas renombradas son: %s", df.columns)
 
