@@ -4,6 +4,7 @@ from dashboard_app.data import obtener_data_uri_imagen_planta
 from dashboard_app.pages.routes import (
     BOMBAS_ROUTE,
     COMPARACION_VARIABLES_ROUTE,
+    MONITOREO_POR_SECCIONES_ROUTE,
     RELACIONES_NO_LINEALES_ROUTE,
     SERIES_TEMPORALES_ROUTE,
     VALVULAS_ROUTE,
@@ -55,6 +56,7 @@ def build_page():
                     html.Div(
                         [
                             construir_link_boton("Gráficas de series temporales y reportes", SERIES_TEMPORALES_ROUTE),
+                            construir_link_boton("Monitoreo por secciones", MONITOREO_POR_SECCIONES_ROUTE),
                             construir_link_boton("Graficas de variable vs variable", COMPARACION_VARIABLES_ROUTE),
                             construir_link_boton("Relaciones no lineales", RELACIONES_NO_LINEALES_ROUTE),
                             construir_link_boton("Valvulas", VALVULAS_ROUTE),

@@ -38,4 +38,4 @@ def get_summary_path(fase):
 
 
 def get_saved_views_path(nombre="saved_views.json"):
-    return os.path.join(DATA_PATH, nombre)
+    return get_metadata_path(nombre)

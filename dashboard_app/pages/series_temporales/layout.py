@@ -5,14 +5,11 @@ from dashboard_app.pages.routes import HOME_ROUTE
 from dashboard_app.pages.shared import APP_PAGE_STYLE, construir_links_secundarios
 from dashboard_app.pages.variables_controls import build_shared_variable_controls
 
-SERIES_TEMPORALES_VIEWS_SCOPE = "series_temporales"
-
-
 def build_page(fases):
     return html.Div(
         [
             construir_links_secundarios([("Inicio", HOME_ROUTE)]),
-            *build_shared_variable_controls(fases, SERIES_TEMPORALES_VIEWS_SCOPE),
+            *build_shared_variable_controls(fases),
             html.H1("Gráfica de series temporales", style=TITULO_CENTRADO_STYLE),
             html.Div(
                 [

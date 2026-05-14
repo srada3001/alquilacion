@@ -4,6 +4,9 @@ from dashboard_app.pages.comparacion_variables.layout import (
     build_page as build_comparacion_variables_page,
 )
 from dashboard_app.pages.home.layout import build_page as build_home_page
+from dashboard_app.pages.monitoreo_por_secciones.layout import (
+    build_page as build_monitoreo_por_secciones_page,
+)
 from dashboard_app.pages.not_found.layout import build_page as build_not_found_page
 from dashboard_app.pages.bombas.callbacks import register_callbacks as register_bombas_callbacks
 from dashboard_app.pages.bombas.layout import build_page as build_bombas_page
@@ -14,6 +17,7 @@ from dashboard_app.pages.routes import (
     BOMBAS_ROUTE,
     COMPARACION_VARIABLES_ROUTE,
     HOME_ROUTE,
+    MONITOREO_POR_SECCIONES_ROUTE,
     RELACIONES_NO_LINEALES_ROUTE,
     SERIES_TEMPORALES_ROUTE,
     VALVULAS_ROUTE,
@@ -44,6 +48,8 @@ def register_page_callback(app, fases):
             return build_home_page()
         if pathname == SERIES_TEMPORALES_ROUTE:
             return build_series_temporales_page(fases)
+        if pathname == MONITOREO_POR_SECCIONES_ROUTE:
+            return build_monitoreo_por_secciones_page(fases)
         if pathname == COMPARACION_VARIABLES_ROUTE:
             return build_comparacion_variables_page(fases)
         if pathname == RELACIONES_NO_LINEALES_ROUTE:

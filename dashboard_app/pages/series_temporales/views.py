@@ -67,13 +67,13 @@ RELACION_TITULO_STYLE = {
 }
 
 
-def construir_chip_variable(variable):
+def construir_chip_variable(variable, remove_button_type="retirar-variable-btn"):
     return html.Div(
         [
             html.Span(construir_etiqueta_columna(variable)),
             html.Button(
                 "-",
-                id={"type": "retirar-variable-btn", "value": variable},
+                id={"type": remove_button_type, "value": variable},
                 n_clicks=0,
                 style=ACCION_RETIRAR_STYLE,
             ),

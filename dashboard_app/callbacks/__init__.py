@@ -1,8 +1,8 @@
-from dashboard_app.callbacks.saved_views import (
-    register_callbacks as register_saved_views_callbacks,
-)
 from dashboard_app.pages.comparacion_variables.callbacks import (
     register_callbacks as register_comparacion_variables_callbacks,
+)
+from dashboard_app.pages.monitoreo_por_secciones.callbacks import (
+    register_callbacks as register_monitoreo_por_secciones_callbacks,
 )
 from dashboard_app.pages.relaciones_no_lineales.callbacks import (
     register_callbacks as register_relaciones_no_lineales_callbacks,
@@ -13,7 +13,7 @@ from dashboard_app.pages.series_temporales.callbacks import (
 
 
 def register_callbacks(app):
-    register_saved_views_callbacks(app)
     register_series_temporales_callbacks(app)
+    register_monitoreo_por_secciones_callbacks(app)
     register_comparacion_variables_callbacks(app)
     register_relaciones_no_lineales_callbacks(app)

@@ -5,6 +5,12 @@ from dash import html
 
 from config import get_metadata_path
 from dashboard_app.callbacks.common import TITULO_CENTRADO_STYLE
+from dashboard_app.domain.semaforo import (
+    calcular_estado_semaforo,
+    construir_anotaciones_umbral,
+    construir_configuracion_semaforo,
+    parsear_valor_numerico,
+)
 from dashboard_app.pages.indicator_utils import (
     EMPTY_STATE_STYLE,
     HEADER_CELL_STYLE,
@@ -24,40 +30,9 @@ METADATA_PATH = Path(get_metadata_path("variables_criticas.csv"))
 COLUMNAS = ["tag", "descripcion", "valor_medido", "minimo", "normal", "normal_sor", "normal_eor", "maximo"]
 
 
-def _rangos(registro):
-    minimo = registro["minimo"]
-    normal = registro["normal"]
-    normal_sor = registro["normal_sor"]
-    normal_eor = registro["normal_eor"]
-    maximo = registro["maximo"]
-
-    if pd.isna(minimo) and pd.isna(normal) and pd.notna(normal_sor) and pd.notna(normal_eor) and pd.notna(maximo):
-        if normal_sor < normal_eor < maximo:
-            return [("normal", normal_sor, normal_eor), ("advertencia", normal_eor, maximo)], normal_sor, maximo
-
-    if pd.notna(minimo) and pd.notna(normal) and pd.notna(maximo) and pd.isna(normal_sor) and pd.isna(normal_eor):
-        if minimo < normal < maximo:
-            return [
-                ("advertencia", minimo, minimo + (normal - minimo) * 0.2),
-                ("normal", minimo + (normal - minimo) * 0.2, maximo - (maximo - normal) * 0.2),
-                ("advertencia", maximo - (maximo - normal) * 0.2, maximo),
-            ], minimo, maximo
-
-    if pd.isna(minimo) and pd.notna(normal) and pd.notna(maximo) and pd.isna(normal_sor) and pd.isna(normal_eor):
-        if normal < maximo:
-            return [("normal", normal, maximo - (maximo - normal) * 0.2), ("advertencia", maximo - (maximo - normal) * 0.2, maximo)], normal, maximo
-
-    return None, None, None
-
-
 def _estado(registro):
-    segmentos, limite_inferior, limite_superior = _rangos(registro)
-    valor = registro["valor_medido"]
-    if pd.isna(valor) or not segmentos:
-        return "sin_datos"
-    if valor < limite_inferior or valor > limite_superior:
-        return "critico"
-    return next((estado for estado, inicio, fin in segmentos if inicio <= valor <= fin), "sin_datos")
+    configuracion = construir_configuracion_semaforo(registro)
+    return calcular_estado_semaforo(registro["valor_medido"], configuracion)
 
 
 def cargar_variables_criticas():
@@ -93,17 +68,20 @@ def cargar_variables_criticas():
 
 
 def _grafico(registro):
-    segmentos, _, _ = _rangos(registro)
+    configuracion = construir_configuracion_semaforo(registro)
+    segmentos = configuracion["segmentos"]
     if not segmentos:
         return html.Div("Sin datos suficientes para construir el indicador.", style={"color": "#6b7280"})
+    actual = parsear_valor_numerico(registro["valor_medido"])
     limites = [inicio for _, inicio, _ in segmentos] + [segmentos[-1][2]]
     return construir_grafico_semaforo(
-        actual=registro["valor_medido"],
+        actual=actual,
         segmentos=segmentos,
         limites=limites,
         hover_label="Valor medido",
         padding_ratio=0.08,
         mostrar_zonas_rojas_externas=True,
+        annotations=construir_anotaciones_umbral(configuracion["umbrales"]),
     )
 
 
