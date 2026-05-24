@@ -1,6 +1,7 @@
 HOME_ROUTE = "/"
 SERIES_TEMPORALES_ROUTE = "/grafica_de_series_temporales_y_reportes"
 MONITOREO_POR_SECCIONES_ROUTE = "/monitoreo-por-secciones"
+LABORATORIO_ROUTE = "/laboratorio"
 COMPARACION_VARIABLES_ROUTE = "/comparacion-variables"
 RELACIONES_NO_LINEALES_ROUTE = "/relaciones-no-lineales"
 VALVULAS_ROUTE = "/valvulas"
